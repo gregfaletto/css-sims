@@ -750,7 +750,6 @@ make_covariance_matrix_weighted <- function(p, nblocks, block_size,
 
     # add covariances of highly correlated features to sigma
     for(i in 1:nblocks){
-        j <- 1
         for(j in 1:(block_size - 1)){
             for(k in (j+1):block_size){
                 feat_1 <- block_feats[i, j]
@@ -760,7 +759,6 @@ make_covariance_matrix_weighted <- function(p, nblocks, block_size,
             }
         }
 
-        j <- 1
         for(j in 1:(n_strong_block_vars - 1)){
             for(k in (j+1):n_strong_block_vars){
                 feat_1 <- block_feats[i, j]
@@ -898,15 +896,16 @@ gen_mu_x_sd4_ranking2 <- function(n, p, k_unblocked, beta_low,
 
 random_simulate_func_ranking2 <- function(n, p, k_unblocked, beta_low,
     beta_high, nblocks=1, sig_blocks=1, block_size, rho, var, snr=NA,
-    sigma_eps_sq=NA, Sigma, beta, nsim){
+    sigma_eps_sq=NA, nsim){
     if(is.na(snr) & is.na(sigma_eps_sq)){
         stop("Must specify one of snr or sigma_eps_sq")
     }
 
     # List we'll return: will be length nsim, and every element will be a
     # named list with elements X and y.
+
     ret_list <- list()
-    stopifnot(nrow(Sigma) == p + sig_blocks & ncol(Sigma) == p + sig_blocks)
+
     # if(!all(dim(Sigma) == c(p + sig_blocks, p + sig_blocks))){
     #     print("dim(Sigma):")
     #     print(dim(Sigma))
@@ -918,16 +917,22 @@ random_simulate_func_ranking2 <- function(n, p, k_unblocked, beta_low,
     # }
     for(i in 1:nsim){
 
-        # Generate one draw of mu, X, z, sd, y
-        gen_mu_x_y_sd_res <- gen_mu_x_y_sd(n, p, beta, Sigma, sig_blocks,
-            block_size, snr, sigma_eps_sq)
+        gen_mu_x_y_sd_res <- cssr::genClusteredData(n=n, p=p,
+            k_unclustered=k_unblocked, cluster_size=block_size,
+            n_clusters=nblocks, sig_clusters=sig_blocks, rho=rho, var=var,
+            beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
+            sigma_eps_sq=sigma_eps_sq)
 
-        mu <- gen_mu_x_y_sd_res$mu
-        # blocked_dgp_vars <- gen_mu_x_y_sd_res$blocked_dgp_vars
-        # z <- gen_mu_x_y_sd_res$z
-        sd <- gen_mu_x_y_sd_res$sd
+        # # Generate one draw of mu, X, z, sd, y
+        # gen_mu_x_y_sd_res <- gen_mu_x_y_sd(n, p, beta, Sigma, sig_blocks,
+        #     block_size, snr, sigma_eps_sq)
+
+        # mu <- gen_mu_x_y_sd_res$mu
+        # # blocked_dgp_vars <- gen_mu_x_y_sd_res$blocked_dgp_vars
+        # # z <- gen_mu_x_y_sd_res$z
+        # sd <- gen_mu_x_y_sd_res$sd
         
-        y <- mu + sd * rnorm(n)
+        # y <- mu + sd * rnorm(n)
 
         ret_list[[i]] <- list(X=gen_mu_x_y_sd_res$X, y=y)
     }
@@ -1001,11 +1006,11 @@ make_sparse_blocked_linear_model4_random_ranking2 <- function(n, p, k_unblocked,
     # Make sure p is large enough
     stopifnot(p >= nblocks*block_size + k_unblocked)
 
-    Sigma <- make_covariance_matrix(p + sig_blocks, nblocks, block_size +
-        sig_blocks, rho, var)
-    coefs <- make_coefficients4_ranking2(p + sig_blocks, k_unblocked,
-        beta_low, beta_high, nblocks, sig_blocks,
-        block_size + 1)
+    # Sigma <- make_covariance_matrix(p + sig_blocks, nblocks, block_size +
+    #     sig_blocks, rho, var)
+    # coefs <- make_coefficients4_ranking2(p + sig_blocks, k_unblocked,
+    #     beta_low, beta_high, nblocks, sig_blocks,
+    #     block_size + 1)
     
     my_model <- new_model(name = "sblm2_random_ranking2", 
                 label = sprintf("Linear model2 (random design) with correlated blocks and ranked2 features (n = %s,
@@ -1019,11 +1024,9 @@ make_sparse_blocked_linear_model4_random_ranking2 <- function(n, p, k_unblocked,
                     block_size = block_size, rho= rho, var = var,
                     snr = snr,
                     sigma_eps_sq = sigma_eps_sq,
-                    Sigma = Sigma,
-                    beta = coefs$beta,
-                    blocked_dgp_vars = coefs$blocked_dgp_vars,
-                    sig_unblocked_vars = coefs$sig_unblocked_vars,
-                    insig_blocked_vars = coefs$insig_blocked_vars),
+                    # blocked_dgp_vars = coefs$blocked_dgp_vars,
+                    # sig_unblocked_vars = coefs$sig_unblocked_vars,
+                    # insig_blocked_vars = coefs$insig_blocked_vars),
                     simulate = random_simulate_func_ranking2
     )
     # print("finished generating model")
