@@ -26,6 +26,8 @@ rm(list=ls())
 
 ############# Load Libraries #################
 
+library(cssr)
+
 library(simulator) # this file was created under simulator version 0.2.0
 library(MASS)
 # library(stabs)

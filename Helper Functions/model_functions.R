@@ -679,7 +679,7 @@ gen_mu_x_sd4_weighted <- function(n, p, k_unblocked, beta_low, beta_high,
 random_simulate_func_weighted <- function(n, p, k_unblocked, beta_low, beta_high,
     nblocks=1, sig_blocks=1, block_size, n_strong_block_vars, rho_high, rho_low,
     var, snr=NA, sigma_eps_sq=NA,
-    Sigma, beta, nsim){
+    nsim){
     if(is.na(snr) & is.na(sigma_eps_sq)){
         stop("Must specify one of snr or sigma_eps_sq")
     }
@@ -688,7 +688,7 @@ random_simulate_func_weighted <- function(n, p, k_unblocked, beta_low, beta_high
     # named list with elements X and y.
     ret_list <- list()
 
-    stopifnot(nrow(Sigma) == p + sig_blocks & ncol(Sigma) == p + sig_blocks)
+    # stopifnot(nrow(Sigma) == p + sig_blocks & ncol(Sigma) == p + sig_blocks)
     # if(!all(dim(Sigma) == c(p + sig_blocks, p + sig_blocks))){
     #     print("dim(Sigma):")
     #     print(dim(Sigma))
@@ -702,17 +702,14 @@ random_simulate_func_weighted <- function(n, p, k_unblocked, beta_low, beta_high
 
         # Generate one draw of mu, X, z, sd, y
 
-        gen_mu_x_y_sd_res <- gen_mu_x_y_sd(n, p, beta, Sigma, sig_blocks,
-            block_size, snr, sigma_eps_sq)
+        gen_mu_x_y_sd_res <- genClusteredDataWeighted(n=n, p=p,
+            k_unclustered=k_unblocked, cluster_size=block_size,
+            n_strong_cluster_vars=n_strong_block_vars, n_clusters=nblocks,
+            sig_clusters=sig_blocks, rho_high=rho_high, rho_low=rho_low,
+            var=var, beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
+            sigma_eps_sq=sigma_eps_sq)
 
-        mu <- gen_mu_x_y_sd_res$mu
-        # blocked_dgp_vars <- gen_mu_x_y_sd_res$blocked_dgp_vars
-        # z <- gen_mu_x_y_sd_res$z
-        sd <- gen_mu_x_y_sd_res$sd
-        
-        y <- mu + sd * rnorm(n)
-
-        ret_list[[i]] <- list(X=gen_mu_x_y_sd_res$X, y=y)
+        ret_list[[i]] <- list(X=gen_mu_x_y_sd_res$X, y=gen_mu_x_y_sd_res$y)
     }
     
     return(ret_list)
@@ -934,7 +931,7 @@ random_simulate_func_ranking2 <- function(n, p, k_unblocked, beta_low,
         
         # y <- mu + sd * rnorm(n)
 
-        ret_list[[i]] <- list(X=gen_mu_x_y_sd_res$X, y=y)
+        ret_list[[i]] <- list(X=gen_mu_x_y_sd_res$X, y=gen_mu_x_y_sd_res$y)
     }
     
     return(ret_list)
@@ -960,14 +957,14 @@ make_blocked_lin_mod4_ran_weight <- function(n, p, k_unblocked,
     # Make sure p is large enough
     stopifnot(p >= nblocks*block_size + k_unblocked)
 
-    Sigma <- make_covariance_matrix_weighted(p + sig_blocks, nblocks,
-        block_size + sig_blocks, n_strong_block_vars + sig_blocks, rho_high,
-        rho_low, var)
+    # Sigma <- make_covariance_matrix_weighted(p + sig_blocks, nblocks,
+    #     block_size + sig_blocks, n_strong_block_vars + sig_blocks, rho_high,
+    #     rho_low, var)
 
-    stopifnot(nrow(Sigma) == p + sig_blocks & ncol(Sigma) == p + sig_blocks)
+    # stopifnot(nrow(Sigma) == p + sig_blocks & ncol(Sigma) == p + sig_blocks)
 
-    coefs <- make_coefficients4_ranking2(p + sig_blocks, k_unblocked, beta_low,
-        beta_high, nblocks, sig_blocks, block_size + 1)
+    # coefs <- make_coefficients4_ranking2(p + sig_blocks, k_unblocked, beta_low,
+    #     beta_high, nblocks, sig_blocks, block_size + 1)
     
     my_model <- new_model(name = "sblm2_random_weighted", 
                 label = sprintf("Lin model (weight avg, corr blocks) (n= %s, p= %s, k_unblocked= %s, rho_high= %s)",
@@ -982,11 +979,11 @@ make_blocked_lin_mod4_ran_weight <- function(n, p, k_unblocked,
                     rho_low = rho_low, var = var,
                     snr = snr,
                     sigma_eps_sq = sigma_eps_sq,
-                    Sigma = Sigma,
-                    beta = coefs$beta,
-                    blocked_dgp_vars = coefs$blocked_dgp_vars,
-                    sig_unblocked_vars = coefs$sig_unblocked_vars,
-                    insig_blocked_vars = coefs$insig_blocked_vars),
+                    # Sigma = Sigma,
+                    # beta = coefs$beta,
+                    # blocked_dgp_vars = coefs$blocked_dgp_vars,
+                    # sig_unblocked_vars = coefs$sig_unblocked_vars,
+                    # insig_blocked_vars = coefs$insig_blocked_vars),
                     simulate = random_simulate_func_weighted
     )
     # print("finished generating model")
