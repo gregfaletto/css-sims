@@ -657,14 +657,16 @@ SS_SS_cssr <- new_method("SS_SS_cssr",
 
 	selected <- list()
 	for(i in 1:model_size){
-		set_i <- cssr::getCssSelections(res, max_num_clusts=i)$selected_feats
-		stopifnot(length(set_i) <= i)
+		set_i <- cssr::getCssSelections(res, min_num_clusts=i,
+			max_num_clusts=i)$selected_feats
 		if(length(set_i) == i){
 			selected[[i]] <- set_i
 		}
 	}
-
-	return(list(css_res=res, selected=selected))
+	# weighting doesn't matter since no clusters provided--using any weighting
+	# scheme will yield the same results in getCssPreds or getCssSelections
+	return(list(css_res=res, selected=selected, method="sparse",
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 	},
 	settings = list(B=100, model_size=11)
 )
@@ -834,15 +836,15 @@ SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 	selected <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(res, weighting="sparse",
-			max_num_clusts=i)
-		stopifnot(length(res_i$selected_clusts) <= i)
+			min_num_clusts=i, max_num_clusts=i)
 		stopifnot(length(res_i$selected_clusts) <= length(res_i$selected_feats))
 		if(length(res_i$selected_clusts) == i){
 			selected[[i]] <- res_i$selected_feats
 		}
 	}
 
-	return(list(css_res=res, selected=selected))
+	return(list(css_res=res, selected=selected, method="sparse",
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
 	settings = list(B=100, model_size=11)
@@ -1008,15 +1010,15 @@ SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 	selected <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(res, weighting="weighted_avg",
-			max_num_clusts=i)
-		stopifnot(length(res_i$selected_clusts) <= i)
+			min_num_clusts=i, max_num_clusts=i)
 		stopifnot(length(res_i$selected_clusts) <= length(res_i$selected_feats))
 		if(length(res_i$selected_clusts) == i){
 			selected[[i]] <- res_i$selected_feats
 		}
 	}
 
-	return(list(css_res=res, selected=selected))
+	return(list(css_res=res, selected=selected, method="css_weighted",
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
 	settings = list(B=100, model_size=11)
@@ -1208,7 +1210,7 @@ SS_GSS_random_avg_unwt <- new_method("SS_GSS_random_avg_unwt",
 
 SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
 	"S&S GSS (random X, unweighted averaging, custom SS function)",
-	method = function(model, draw, B) {
+	method = function(model, draw, B, model_size) {
 	# Simple averaged cluster stability selection
 	lambda <- cssr::getLassoLambda(draw$X, draw$y, lambda_choice="min")
 
@@ -1223,15 +1225,15 @@ SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
 	selected <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(res, weighting="simple_avg",
-			max_num_clusts=i)
-		stopifnot(length(res_i$selected_clusts) <= i)
+			min_num_clusts=i, max_num_clusts=i)
 		stopifnot(length(res_i$selected_clusts) <= length(res_i$selected_feats))
 		if(length(res_i$selected_clusts) == i){
 			selected[[i]] <- res_i$selected_feats
 		}
 	}
 
-	return(list(css_res=res, selected=selected))
+	return(list(css_res=res, selected=selected, method="simple_avg",
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
 	settings = list(B=100, model_size=11)
@@ -1350,7 +1352,7 @@ SS_GSS_random_avg_unwt_custom <- new_method("SS_GSS_random_avg_unwt_custom",
 
 clusRepLasso_cssr <- new_method("clusRepLasso_cssr",
 	"BRVZ method (random X, unweighted averaging)",
-	method = function(model, draw) {
+	method = function(model, draw, model_size) {
 	
 	stopifnot(model$nblocks == 1)
 	stopifnot(model$sig_blocks == 1)
@@ -1358,9 +1360,10 @@ clusRepLasso_cssr <- new_method("clusRepLasso_cssr",
 	res <- cssr::clusterRepLasso(draw$X, draw$y, clusters=1:model$block_size,
 		nlambda=2000)
 
-	selected <- res$selected_sets[[1:min(res$selected_sets, model_size)]]
+	num_sets <- min(length(res$selected_clusts_list), model_size)
 
-	return(selected)	
+	return(list(selected_clusts_list=res$selected_clusts_list[[1:num_sets]],
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
 	},
 	settings = list(model_size=11)
 )
@@ -1438,9 +1441,10 @@ protolasso_cssr <- new_method("protolasso_cssr",
 	res <- cssr::protolasso(draw$X, draw$y, clusters=1:model$block_size,
 		nlambda=2000)
 
-	selected <- res$selected_sets[[1:min(res$selected_sets, model_size)]]
+	num_sets <- min(length(res$selected_sets), model_size)
 
-	return(selected)	
+	return(list(selected_sets=res$selected_sets[[1:num_sets]],
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
 	},
 	settings = list(model_size=11)
 )
@@ -1629,7 +1633,7 @@ lasso <- new_method("lasso", "Lasso",
 
 lasso_random <- new_method("lasso_random", "Lasso (Random design)",
 	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
-	method = function(model, draw) {
+	method = function(model, draw, model_size) {
 	fit <- glmnet(x=draw$X, y=draw$y, family="gaussian", alpha=1,
 		nlambda=2000, lambda.min.ratio=0.1)
 	selected <- unique(predict(fit, type="nonzero"))
@@ -1639,14 +1643,17 @@ lasso_random <- new_method("lasso_random", "Lasso (Random design)",
 		selected <- selected[2:length(selected)]
 		cond <- is.null(selected[[1]])
 	}
+	selected <- selected[lengths(selected) <= model_size]
 
-	return(selected)
-	}
+	return(list(lasso_selected=selected, testX=draw$testX, testY=draw$testY,
+		testMu=draw$testMu))
+	},
+	settings = list(model_size=11)
 )
 
 elastic_net <- new_method("elastic_net", "Elastic Net",
 	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
-	method = function(model, draw) {
+	method = function(model, draw, model_size) {
 	fit <- glmnet(x=draw$X, y=draw$y, family="gaussian", alpha=0.5,
 		nlambda=2000, lambda.min.ratio=0.1)
 	selected <- unique(predict(fit, type="nonzero"))
@@ -1656,9 +1663,12 @@ elastic_net <- new_method("elastic_net", "Elastic Net",
 		selected <- selected[2:length(selected)]
 		cond <- is.null(selected[[1]])
 	}
+	selected <- selected[lengths(selected) <= model_size]
 
-	return(selected)
-	}
+	return(list(lasso_selected=selected, testX=draw$testX, testY=draw$testY,
+		testMu=draw$testMu))
+	},
+	settings = list(model_size=11)
 )
 
 ### Lasso of size 2

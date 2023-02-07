@@ -84,12 +84,14 @@ setwd(wd)
 
 ###############################################
 
-# Folder in which to save figures
-folder <- "210523/Ranking Sim (first simulation)"
+# # Folder in which to save figures
+# folder <- "210523/Ranking Sim (first simulation)"
 
-folder_main <- "/Users/gregfaletto/Dropbox/Subspace Stability Selection/sims_6"
-folder_dir <- file.path(folder_main, folder)
-dir.create(folder_dir, showWarnings = FALSE, recursive = TRUE)
+# folder_main <- "/Users/gregfaletto/Dropbox/Subspace Stability Selection/sims_6"
+# folder_dir <- file.path(folder_main, folder)
+# dir.create(folder_dir, showWarnings = FALSE, recursive = TRUE)
+
+
 # Run simulation, or load simulation that has been previously run?
 run_new_sim <- TRUE
 # Titles on p_hat plots?
@@ -112,7 +114,7 @@ seed2 <- 734355
 n_model <- 200
 n_test <- 10000
 # n_sims <- 1000
-n_sims <- 2
+n_sims <- 1
 # p <- 50
 p <- as.list(c(0.5*n_model
     # , n_model
@@ -195,7 +197,7 @@ if(calc_clust_stab & (sig_blocks != 1)){
     stop("sig_blocks != 1 (can't calculate clustered stability metric)")
 }
 
-setwd(sim_dir)
+setwd(wd)
 
 t0 <- Sys.time()
 
@@ -236,7 +238,8 @@ if(run_new_sim){
         ))
 
         gss_random_ranking_custom_test0 <- gss_random_ranking_custom_test0 %>%
-            evaluate(list(phat, labels))
+            evaluate(list(cssr_mse))
+            # evaluate(list(phat, labels))
     } else{
         gss_random_ranking_custom_test0 <- new_simulation("gss_random_ranking_custom_test0",
         "GSS (Random Design, ranked features)") %>%
@@ -260,16 +263,13 @@ if(run_new_sim){
             # Samworth 2012)
             # SS_SS_random_custom # Stability selection (as proposed by Shah and
             # Samworth 2012)
-            # , SS_GSS_random
-            , SS_CSS_sparse_cssr # Sparse cluster stability selection
+            # , SS_CSS_sparse_cssr # Sparse cluster stability selection
             # , SS_GSS_random_custom # Sparse cluster stability selection
-            # , SS_GSS_random_avg
             , SS_CSS_weighted_cssr # Weighted averaged cluster stability
             # selection
             # , SS_GSS_random_avg_custom # Weighted averaged cluster stability
             # selection
-            # , SS_GSS_random_avg_unwt
-            , SS_CSS_avg_cssr # Simple averaged cluster stability
+            # , SS_CSS_avg_cssr # Simple averaged cluster stability
             # selection
             # , SS_GSS_random_avg_unwt_custom # Simple averaged cluster stability
             # selection
@@ -282,10 +282,11 @@ if(run_new_sim){
         ))
 
         gss_random_ranking_custom_test0 <- gss_random_ranking_custom_test0 %>%
-            evaluate(list(phat, labels))
+            evaluate(list(cssr_mse))
+            # evaluate(list(phat, labels))
     }
 
-    save_simulation(gss_random_ranking_custom_test0)
+    # save_simulation(gss_random_ranking_custom_test0)
     
 
 } else{
@@ -304,9 +305,9 @@ sim <- "random_ranking"
 # n <- model(gss_random_ranking_custom_test0)@params$n
 # p <- model(gss_random_ranking_custom_test0)@params$p
 
-setwd(code_dir)
+# setwd(code_dir)
 
-source("toy_example_plots.R")
+# source("toy_example_plots.R")
 
 
 
