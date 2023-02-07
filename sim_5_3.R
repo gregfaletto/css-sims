@@ -261,19 +261,27 @@ if(run_new_sim){
         # , vary_along = ifelse(n_param_combs > 1, "p", NULL)
         , vary_along = c("p", "beta_high")
         ) %>% simulate_from_model(nsim = n_sims) %>%
-        run_method(c(lasso_random
+        run_method(c(lasso_random # lasso
+            , SS_SS_cssr # Stability selection (as proposed by Shah and
+            # Samworth 2012)
             # , subspace_sel_grass_random
             # , subspace_ss_max_cancor_random
             # , subspace_ss_min_cancor_random
             # , SS_SS_random
             # , SS_SS_random_custom
             # , SS_GSS_random
-            , BRVZ_avg_unwt
-            , SS_GSS_random_custom
+            , clusRepLasso_cssr
+            # , BRVZ_avg_unwt
+            , protolasso_cssr
+            , SS_CSS_sparse_cssr
+            # , SS_GSS_random_custom
             # , SS_GSS_random_avg
-            , SS_GSS_random_avg_custom
+            , SS_CSS_weighted_cssr
+            # , SS_GSS_random_avg_custom
             # , SS_GSS_random_avg_unwt
-            , SS_GSS_random_avg_unwt_custom
+            , SS_CSS_avg_cssr
+            , elastic_net
+            # , SS_GSS_random_avg_unwt_custom
             # , lasso_proto
             # , lassoSS_phat_cor_squared_random
             # , list_of_lasso_ps_sss_5_.7_random

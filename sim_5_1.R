@@ -256,19 +256,29 @@ if(run_new_sim){
         , vary_along = c("p", "beta_high")
         ) %>% simulate_from_model(nsim = n_sims) %>%
         run_method(c(
-            SS_SS_random_custom # Stability selection (as proposed by Shah and
+            SS_SS_cssr # Stability selection (as proposed by Shah and
+            # Samworth 2012)
+            # SS_SS_random_custom # Stability selection (as proposed by Shah and
             # Samworth 2012)
             # , SS_GSS_random
-            , SS_GSS_random_custom # Sparse cluster stability selection
+            , SS_CSS_sparse_cssr # Sparse cluster stability selection
+            # , SS_GSS_random_custom # Sparse cluster stability selection
             # , SS_GSS_random_avg
-            , SS_GSS_random_avg_custom # Weighted averaged cluster stability
+            , SS_CSS_weighted_cssr # Weighted averaged cluster stability
+            # selection
+            # , SS_GSS_random_avg_custom # Weighted averaged cluster stability
             # selection
             # , SS_GSS_random_avg_unwt
-            , SS_GSS_random_avg_unwt_custom # Simple averaged cluster stability
+            , SS_CSS_avg_cssr # Simple averaged cluster stability
             # selection
-            , BRVZ_avg_unwt # Cluster representative lasso
-            , lasso_proto # Protolasso
+            # , SS_GSS_random_avg_unwt_custom # Simple averaged cluster stability
+            # selection
+            , clusRepLasso_cssr # Cluster representative lasso
+            # , BRVZ_avg_unwt # Cluster representative lasso
+            , protolasso_cssr # Protolasso
+            # , lasso_proto # Protolasso
             , lasso_random # Lasso
+            , elastic_net # Elastic Net
         ))
 
         gss_random_ranking_custom_test0 <- gss_random_ranking_custom_test0 %>%

@@ -642,6 +642,33 @@ SS_SS_random <- new_method("SS_SS_random",
 	settings = list(cutoff = 0.7, B=100)
 )
 
+SS_SS_cssr <- new_method("SS_SS_cssr",
+	"S&S SS (random X, custom SS function)",
+	method = function(model, draw, B, model_size) {
+	# Original stability selection procedure
+	# Get lambda
+	lambda <- cssr::getLassoLambda(X=draw$X, y=draw$y, lambda_choice="min")
+
+	# Don't provide clusters
+	res <- cssr::css(X=draw$X, y=draw$y, lambda=lambda)
+
+	# Confirm no clusters in the results
+	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X))
+
+	selected <- list()
+	for(i in 1:model_size){
+		set_i <- cssr::getCssSelections(res, max_num_clusts=i)$selected_feats
+		stopifnot(length(set_i) <= i)
+		if(length(set_i) == i){
+			selected[[i]] <- set_i
+		}
+	}
+
+	return(list(css_res=res, selected=selected))
+	},
+	settings = list(B=100, model_size=11)
+)
+
 SS_SS_random_custom <- new_method("SS_SS_random_custom",
 	"S&S SS (random X, custom SS function)",
 	method = function(model, draw, B) {
@@ -790,6 +817,40 @@ SS_GSS_random <- new_method("SS_GSS_random",
 	settings = list(cutoff = 0.52, B=100)
 )
 
+SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
+	"S&S GSS (random X, custom SS function)",
+	method = function(model, draw, B, model_size) {
+	# Sparse cluster stability selection
+	lambda <- cssr::getLassoLambda(draw$X, draw$y, lambda_choice="min")
+
+	stopifnot(model$nblocks == 1)
+	stopifnot(model$sig_blocks == 1)
+
+	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size)
+
+	# Confirm cluster in the results
+	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
+
+	selected <- list()
+	for(i in 1:model_size){
+		res_i <- cssr::getCssSelections(res, weighting="sparse",
+			max_num_clusts=i)
+		stopifnot(length(res_i$selected_clusts) <= i)
+		stopifnot(length(res_i$selected_clusts) <= length(res_i$selected_feats))
+		if(length(res_i$selected_clusts) == i){
+			selected[[i]] <- res_i$selected_feats
+		}
+	}
+
+	return(list(css_res=res, selected=selected))
+
+	},
+	settings = list(B=100, model_size=11)
+)
+
+
+
+
 SS_GSS_random_custom <- new_method("SS_GSS_random_custom",
 	"S&S GSS (random X, custom SS function)",
 	method = function(model, draw, B) {
@@ -928,6 +989,39 @@ SS_GSS_random_avg <- new_method("SS_GSS_random_avg",
 	# selection
 	settings = list(cutoff = 0.52, B=100)
 )
+
+
+SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
+	"S&S GSS (random X, averaging, custom SS function)",
+	method = function(model, draw, B, model_size) {
+	# Sparse cluster stability selection
+	lambda <- cssr::getLassoLambda(draw$X, draw$y, lambda_choice="min")
+
+	stopifnot(model$nblocks == 1)
+	stopifnot(model$sig_blocks == 1)
+
+	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size)
+
+	# Confirm cluster in the results
+	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
+
+	selected <- list()
+	for(i in 1:model_size){
+		res_i <- cssr::getCssSelections(res, weighting="weighted_avg",
+			max_num_clusts=i)
+		stopifnot(length(res_i$selected_clusts) <= i)
+		stopifnot(length(res_i$selected_clusts) <= length(res_i$selected_feats))
+		if(length(res_i$selected_clusts) == i){
+			selected[[i]] <- res_i$selected_feats
+		}
+	}
+
+	return(list(css_res=res, selected=selected))
+
+	},
+	settings = list(B=100, model_size=11)
+)
+
 
 SS_GSS_random_avg_custom <- new_method("SS_GSS_random_avg_custom",
 	"S&S GSS (random X, averaging, custom SS function)",
@@ -1112,6 +1206,40 @@ SS_GSS_random_avg_unwt <- new_method("SS_GSS_random_avg_unwt",
 	settings = list(cutoff = 0.52, B=100)
 )
 
+SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
+	"S&S GSS (random X, unweighted averaging, custom SS function)",
+	method = function(model, draw, B) {
+	# Simple averaged cluster stability selection
+	lambda <- cssr::getLassoLambda(draw$X, draw$y, lambda_choice="min")
+
+	stopifnot(model$nblocks == 1)
+	stopifnot(model$sig_blocks == 1)
+
+	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size)
+
+	# Confirm cluster in the results
+	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
+
+	selected <- list()
+	for(i in 1:model_size){
+		res_i <- cssr::getCssSelections(res, weighting="simple_avg",
+			max_num_clusts=i)
+		stopifnot(length(res_i$selected_clusts) <= i)
+		stopifnot(length(res_i$selected_clusts) <= length(res_i$selected_feats))
+		if(length(res_i$selected_clusts) == i){
+			selected[[i]] <- res_i$selected_feats
+		}
+	}
+
+	return(list(css_res=res, selected=selected))
+
+	},
+	settings = list(B=100, model_size=11)
+)
+
+
+
+
 SS_GSS_random_avg_unwt_custom <- new_method("SS_GSS_random_avg_unwt_custom",
 	"S&S GSS (random X, unweighted averaging, custom SS function)",
 	method = function(model, draw, B) {
@@ -1220,6 +1348,26 @@ SS_GSS_random_avg_unwt_custom <- new_method("SS_GSS_random_avg_unwt_custom",
 )
 
 
+clusRepLasso_cssr <- new_method("clusRepLasso_cssr",
+	"BRVZ method (random X, unweighted averaging)",
+	method = function(model, draw) {
+	
+	stopifnot(model$nblocks == 1)
+	stopifnot(model$sig_blocks == 1)
+
+	res <- cssr::clusterRepLasso(draw$X, draw$y, clusters=1:model$block_size,
+		nlambda=2000)
+
+	selected <- res$selected_sets[[1:min(res$selected_sets, model_size)]]
+
+	return(selected)	
+	},
+	settings = list(model_size=11)
+)
+
+
+
+
 BRVZ_avg_unwt <- new_method("BRVZ_avg_unwt",
 	"BRVZ method (random X, unweighted averaging)",
 	method = function(model, draw) {
@@ -1278,6 +1426,23 @@ BRVZ_avg_unwt <- new_method("BRVZ_avg_unwt",
 		selected_clusts_list=BRVZ_results$selected_clusts_list,
 		weights_list=BRVZ_results$weights_list))
 	}
+)
+
+protolasso_cssr <- new_method("protolasso_cssr",
+	"Lasso (cluster prototype, Random design)", method=function(model, draw,
+		model_size){
+
+	stopifnot(model$nblocks == 1)
+	stopifnot(model$sig_blocks == 1)
+
+	res <- cssr::protolasso(draw$X, draw$y, clusters=1:model$block_size,
+		nlambda=2000)
+
+	selected <- res$selected_sets[[1:min(res$selected_sets, model_size)]]
+
+	return(selected)	
+	},
+	settings = list(model_size=11)
 )
 
 
@@ -1467,8 +1632,32 @@ lasso_random <- new_method("lasso_random", "Lasso (Random design)",
 	method = function(model, draw) {
 	fit <- glmnet(x=draw$X, y=draw$y, family="gaussian", alpha=1,
 		nlambda=2000, lambda.min.ratio=0.1)
-	selected <- predict(fit, type="nonzero")
-	return(list(selected=selected, beta=fit$beta))
+	selected <- unique(predict(fit, type="nonzero"))
+
+	cond <- is.null(selected[[1]])
+	while(cond){
+		selected <- selected[2:length(selected)]
+		cond <- is.null(selected[[1]])
+	}
+
+	return(selected)
+	}
+)
+
+elastic_net <- new_method("elastic_net", "Elastic Net",
+	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
+	method = function(model, draw) {
+	fit <- glmnet(x=draw$X, y=draw$y, family="gaussian", alpha=0.5,
+		nlambda=2000, lambda.min.ratio=0.1)
+	selected <- unique(predict(fit, type="nonzero"))
+
+	cond <- is.null(selected[[1]])
+	while(cond){
+		selected <- selected[2:length(selected)]
+		cond <- is.null(selected[[1]])
+	}
+
+	return(selected)
 	}
 )
 
