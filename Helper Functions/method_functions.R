@@ -656,11 +656,17 @@ SS_SS_cssr <- new_method("SS_SS_cssr",
 	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X))
 
 	selected <- list()
+	selected_clusts <- list()
 	for(i in 1:model_size){
-		set_i <- cssr::getCssSelections(res, min_num_clusts=i,
-			max_num_clusts=i)$selected_feats
+		res_i <- cssr::getCssSelections(res, min_num_clusts=i,
+			max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
 		if(length(set_i) == i){
 			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
 		}
 	}
 	# weighting doesn't matter since no clusters provided--using any weighting
@@ -834,17 +840,25 @@ SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
 
 	selected <- list()
+	selected_clusts <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(res, weighting="sparse",
 			min_num_clusts=i, max_num_clusts=i)
-		stopifnot(length(res_i$selected_clusts) <= length(res_i$selected_feats))
-		if(length(res_i$selected_clusts) == i){
-			selected[[i]] <- res_i$selected_feats
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		stopifnot(length(clusts_i) <= length(set_i))
+		
+		if(length(clusts_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
 		}
 	}
 
-	return(list(css_res=res, selected=selected, method="sparse",
-		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
+	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
+		method="sparse", testX=draw$testX, testY=draw$testY,
+		testMu=draw$testMu))
 
 	},
 	settings = list(B=100, model_size=11)
@@ -1008,17 +1022,25 @@ SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
 
 	selected <- list()
+	selected_clusts <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(res, weighting="weighted_avg",
 			min_num_clusts=i, max_num_clusts=i)
-		stopifnot(length(res_i$selected_clusts) <= length(res_i$selected_feats))
-		if(length(res_i$selected_clusts) == i){
-			selected[[i]] <- res_i$selected_feats
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		stopifnot(length(clusts_i) <= length(set_i))
+		
+		if(length(clusts_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
 		}
 	}
 
-	return(list(css_res=res, selected=selected, method="weighted_avg",
-		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
+	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
+		method="weighted_avg", testX=draw$testX, testY=draw$testY,
+		testMu=draw$testMu))
 
 	},
 	settings = list(B=100, model_size=11)
@@ -1223,17 +1245,25 @@ SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
 	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
 
 	selected <- list()
+	selected_clusts <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(res, weighting="simple_avg",
 			min_num_clusts=i, max_num_clusts=i)
-		stopifnot(length(res_i$selected_clusts) <= length(res_i$selected_feats))
-		if(length(res_i$selected_clusts) == i){
-			selected[[i]] <- res_i$selected_feats
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		stopifnot(length(clusts_i) <= length(set_i))
+		
+		if(length(clusts_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
 		}
 	}
 
-	return(list(css_res=res, selected=selected, method="simple_avg",
-		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
+	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
+		method="simple_avg", testX=draw$testX, testY=draw$testY,
+		testMu=draw$testMu))
 
 	},
 	settings = list(B=100, model_size=11)

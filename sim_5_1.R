@@ -263,13 +263,13 @@ if(run_new_sim){
             # Samworth 2012)
             # SS_SS_random_custom # Stability selection (as proposed by Shah and
             # Samworth 2012)
-            # , SS_CSS_sparse_cssr # Sparse cluster stability selection
+            , SS_CSS_sparse_cssr # Sparse cluster stability selection
             # , SS_GSS_random_custom # Sparse cluster stability selection
             , SS_CSS_weighted_cssr # Weighted averaged cluster stability
             # selection
             # , SS_GSS_random_avg_custom # Weighted averaged cluster stability
             # selection
-            # , SS_CSS_avg_cssr # Simple averaged cluster stability
+            , SS_CSS_avg_cssr # Simple averaged cluster stability
             # selection
             # , SS_GSS_random_avg_unwt_custom # Simple averaged cluster stability
             # selection
