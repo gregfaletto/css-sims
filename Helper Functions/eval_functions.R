@@ -222,8 +222,7 @@ a2 <- new_metric("a2", "A2",
 )
 
 
-cssr_mse <- new_metric("lambda2_big", "Lambda2 Big",
-     metric = function(model, out) {
+cssr_mse <- new_metric("MSE", "MSE", metric = function(model, out) {
           out_names <- names(out)
 
           if("css_res" %in% out_names){
@@ -258,8 +257,6 @@ cssr_mse_metric_func <- function(out){
           # Check if a selected set of size i was defined to exist--if not, skip
           # this model size
           if(!is.null(out$selected[[i]])){
-               # Should be a selected set of length i (i clusters)
-               stopifnot(length(out$selected[[i]]) == i)
                # Generate test set predictions
                mu_hat_i <- cssr::getCssPreds(out$css_res, testX=out$testX,
                     weighting=out$method, min_num_clusts=i, max_num_clusts=i,

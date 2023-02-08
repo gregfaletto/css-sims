@@ -114,7 +114,7 @@ seed2 <- 734355
 n_model <- 200
 n_test <- 10000
 # n_sims <- 1000
-n_sims <- 1
+n_sims <- 5
 # p <- 50
 p <- as.list(c(0.5*n_model
     # , n_model

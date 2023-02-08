@@ -1017,7 +1017,7 @@ SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 		}
 	}
 
-	return(list(css_res=res, selected=selected, method="css_weighted",
+	return(list(css_res=res, selected=selected, method="weighted_avg",
 		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
@@ -1362,7 +1362,7 @@ clusRepLasso_cssr <- new_method("clusRepLasso_cssr",
 
 	num_sets <- min(length(res$selected_clusts_list), model_size)
 
-	return(list(selected_clusts_list=res$selected_clusts_list[[1:num_sets]],
+	return(list(selected_clusts_list=res$selected_clusts_list[1:num_sets],
 		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
 	},
 	settings = list(model_size=11)
@@ -1443,7 +1443,7 @@ protolasso_cssr <- new_method("protolasso_cssr",
 
 	num_sets <- min(length(res$selected_sets), model_size)
 
-	return(list(selected_sets=res$selected_sets[[1:num_sets]],
+	return(list(selected_sets=res$selected_sets[1:num_sets],
 		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
 	},
 	settings = list(model_size=11)
