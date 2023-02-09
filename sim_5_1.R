@@ -71,7 +71,7 @@ code_dir <- paste(wd, "Helper Functions", sep="/")
 
 
 registerDoParallel()
-registerDoMC(cores = detectCores())
+registerDoMC(cores = detectCores() - 1)
 
 setwd(code_dir)
 source("toy_ex_slide_funcs.R")
@@ -116,11 +116,12 @@ n_test <- 10000
 # n_sims <- 1000
 n_sims <- 5
 # p <- 50
-p <- as.list(c(0.5*n_model
-    # , n_model
-    # , 2*n_model 
-    # , 5*n_model
-    ))
+p <- 100
+# p <- as.list(c(0.5*n_model
+#     # , n_model
+#     # , 2*n_model 
+#     # , 5*n_model
+#     ))
 nblocks <- 1
 sig_blocks <- 1
 k_unblocked <- 10
@@ -128,12 +129,13 @@ beta_low <- 1
 # beta_low_min <- 0.55
 # beta_low_max <- 1
 # beta_high <- 2
-beta_high <- as.list(c(
-    # 1,
-    1.5
-    # , 2
-    # , sqrt(k_unblocked)
-    ))
+beta_high <- 1.5
+# beta_high <- as.list(c(
+#     # 1,
+#     1.5
+#     # , 2
+#     # , sqrt(k_unblocked)
+#     ))
 block_size <- 10
 rho <- 0.9
 # rho_low <- 0.9
@@ -256,7 +258,7 @@ if(run_new_sim){
         var = var,
         snr = snr 
         # , vary_along = ifelse(n_param_combs > 1, "p", NULL)
-        , vary_along = c("p", "beta_high")
+        # , vary_along = c("p", "beta_high")
         ) %>% simulate_from_model(nsim = n_sims) %>%
         run_method(c(
             SS_SS_cssr # Stability selection (as proposed by Shah and
@@ -300,6 +302,95 @@ rm(gss_random_ranking_custom_test0)
 
 # Which simulation type is this? (Need for later processing)
 sim <- "random_ranking"
+
+e <- evals(completed_sim)
+edf <- as.data.frame(e)
+
+methods <- unique(edf$Method)
+n_methods <- length(methods)
+
+alpha <- 0.05
+
+model_sizes <- rep(1:(sig_blocks + k_unblocked), times=n_methods)
+methods_vec <- nameMap(rep(methods, each=sig_blocks + k_unblocked))
+mses <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+margins <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+nsbstabs <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+nsb_lowers <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+nsb_uppers <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+
+# Get MSEs and NSB stabilities
+for(i in 1:n_methods){
+    edf_i <- edf[edf$Method == methods[i], ]
+    # Should have a number of rows divisible by sig_blocks + k_unblocked
+    stopifnot(nrow(edf_i) %% (sig_blocks + k_unblocked) == 0)
+    stopifnot(n_sims*(sig_blocks + k_unblocked) == nrow(edf_i))
+
+    meth_i_vec <- rep(as.numeric(NA), sig_blocks + k_unblocked)
+    o_i <- output(completed_sim, methods=methods[i])@out
+
+    for(k in 1:(sig_blocks + k_unblocked)){
+        # MSE
+        inds_k <- (sig_blocks + k_unblocked)*(0:(n_sims - 1)) + k
+        stopifnot(all(inds_k %in% 1:nrow(edf_i)))
+        mses_ik <- edf_i[inds_k, "MSE"]
+
+        if(any(!is.na(mses_ik))){
+            # mse_mat[k, i] <- mean(mses_ik, na.rm=TRUE)
+            mses[(i - 1)*(sig_blocks + k_unblocked) + k] <- mean(mses_ik,
+                na.rm=TRUE)
+            # margin_mat[k, i] <- qnorm(1 - alpha/2)*sd(mses_ik, na.rm=TRUE)/
+            #     sqrt(sum(!is.na(mses_ik)))
+            margins[(i - 1)*(sig_blocks + k_unblocked) + k] <-
+                qnorm(1 - alpha/2)*sd(mses_ik, na.rm=TRUE)/
+                sqrt(sum(!is.na(mses_ik)))
+        }
+
+        # NSB Stability
+        mat_i_k <- getBinMat(o_i, methods[i], k)
+        # Get stability metric--only works if there are at least 2 simulations
+        stopifnot(n_sims > 1)
+        stab_res_ik <- calcNSBStabNone(mat_i_k, calc_errors=TRUE)
+        nsbstabs[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[1]
+        nsb_lowers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[2]
+        nsb_uppers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[3]
+    }
+}
+
+results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
+    MSELower=mses - margins, MSEUpper=mses + margins, NSBStability=nsbstabs,
+    StabLower=nsb_lowers, StabUpper=nsb_uppers)
+
+# createLossesPlot3(results_df, n_methods)
+
+# createNSBStabPlot2(results_df)
+
+# # NSB Stability
+# results_list <- list()
+# for(i in 1:n_methods){
+#     # For each method and each model size, get a n_sims x p matrix of binary
+#     # indicators of selected features (in matrix k, entry ij = 1 if feature j=
+#     # was selected by the method on simulation i in the model of size k).
+#     # This will be used as an input to the function calcNSBStab.
+#     meth_i_vec <- rep(as.numeric(NA), sig_blocks + k_unblocked)
+#     o_i <- output(completed_sim, methods=methods[i])@out
+#     for(k in 1:(sig_blocks + k_unblocked)){
+#         mat_i_k <- getBinMat(o_i, methods[i], k)
+#         # Get stability metric--only works if there are at least 2 simulations
+#         stopifnot(n_sims > 1)
+#         meth_i_vec[k] <- calcNSBStabNone(mat_i_k)
+#     }
+#     results_list[[i]] <- meth_i_vec
+# }
+
+# names(results_list) <- methods
+
+# saveFigure()
+
+# createPhatPlot()
+
+# createStabMSEPlot()
+
 
 # # Getting n, p from original data generation
 # n <- model(gss_random_ranking_custom_test0)@params$n

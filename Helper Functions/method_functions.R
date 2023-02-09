@@ -650,7 +650,8 @@ SS_SS_cssr <- new_method("SS_SS_cssr",
 	lambda <- cssr::getLassoLambda(X=draw$X, y=draw$y, lambda_choice="min")
 
 	# Don't provide clusters
-	res <- cssr::css(X=draw$X, y=draw$y, lambda=lambda)
+	res <- cssr::css(X=draw$X, y=draw$y, lambda=lambda,
+		num_cores=detectCores() - 1)
 
 	# Confirm no clusters in the results
 	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X))
@@ -664,6 +665,10 @@ SS_SS_cssr <- new_method("SS_SS_cssr",
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
 
+		# Number of clusters should equal number of features for regular
+		# stability selection (each "cluster" should contain a single feature)
+		stopifnot(length(set_i) == length(clusts_i))
+
 		if(length(set_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
@@ -671,8 +676,9 @@ SS_SS_cssr <- new_method("SS_SS_cssr",
 	}
 	# weighting doesn't matter since no clusters provided--using any weighting
 	# scheme will yield the same results in getCssPreds or getCssSelections
-	return(list(css_res=res, selected=selected, method="sparse",
-		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
+	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
+		method="sparse", testX=draw$testX, testY=draw$testY,
+		testMu=draw$testMu))
 	},
 	settings = list(B=100, model_size=11)
 )
@@ -834,7 +840,8 @@ SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 	stopifnot(model$nblocks == 1)
 	stopifnot(model$sig_blocks == 1)
 
-	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size)
+	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size,
+		num_cores=detectCores() - 1)
 
 	# Confirm cluster in the results
 	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
@@ -1016,7 +1023,8 @@ SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 	stopifnot(model$nblocks == 1)
 	stopifnot(model$sig_blocks == 1)
 
-	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size)
+	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size,
+		num_cores=detectCores() - 1)
 
 	# Confirm cluster in the results
 	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
@@ -1239,7 +1247,8 @@ SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
 	stopifnot(model$nblocks == 1)
 	stopifnot(model$sig_blocks == 1)
 
-	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size)
+	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size,
+		num_cores=detectCores() - 1)
 
 	# Confirm cluster in the results
 	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)

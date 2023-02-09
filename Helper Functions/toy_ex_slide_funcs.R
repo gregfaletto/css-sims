@@ -129,15 +129,18 @@ nameMap <- function(sys_name){
     ret <- sys_name
     ret[sys_name %in%  c("lasso", "lasso_random")] <- "Lasso"
     ret[sys_name %in%  c("lassoSS_phat", "SS_SS_random",
-        "SS_SS_random_custom", "SS_SS")] <- "Stability Selection"
+        "SS_SS_random_custom", "SS_SS", "SS_SS_cssr")] <- "Stability Selection"
     ret[sys_name %in%  c("lassoSS_phat_ideal", "SS_GSS_random",
-        "SS_GSS_random_custom", "SS_GSS")] <- "Sparse CSS"
+        "SS_GSS_random_custom", "SS_GSS", "SS_CSS_sparse_cssr")] <- "Sparse CSS"
     ret[sys_name %in%  c("SS_GSS_random_avg", "SS_GSS_random_avg_custom",
-        "SS_GSS_avg")] <- "Weighted Averaged CSS"
+        "SS_GSS_avg", "SS_CSS_weighted_cssr")] <- "CSS"
     ret[sys_name %in%  c("SS_GSS_random_avg_unwt", "SS_GSS_avg_unwt",
-        "SS_GSS_random_avg_unwt_custom")] <- "Simple Averaged CSS"
-    ret[sys_name %in%  c("BRVZ_avg_unwt")] <- "Cluster Representative Lasso"
-    ret[sys_name %in%  c("lasso_proto")] <- "Protolasso"
+        "SS_GSS_random_avg_unwt_custom", "SS_CSS_avg_cssr")] <-
+        "Simple Averaged CSS"
+    ret[sys_name %in%  c("BRVZ_avg_unwt", "clusRepLasso_cssr")] <-
+        "Cluster Representative Lasso"
+    ret[sys_name %in%  c("lasso_proto", "protolasso_cssr")] <- "Protolasso"
+    ret[sys_name %in%  c("elastic_net")] <- "Elastic Net"
     return(ret)
 }
 
@@ -1937,52 +1940,14 @@ calcNSBStab <- function(sel_mat, n_sims=NA, calc_errors=FALSE, conf=0.95,
     # bound for the conf confidence interval, and an upper bound for the
     # confidence interval.
 
-
-    # Check inputs
-    stopifnot(is.matrix(sel_mat))
-    stopifnot(all(!is.na(sel_mat)))
-    stopifnot(all(sel_mat %in% c(0, 1)))
-
     if(is.na(n_sims)){
         n_sims <- nrow(sel_mat)/coarseness
     }
 
-    stopifnot(length(n_sims) == 1)
-    stopifnot(n_sims == round(n_sims))
-    stopifnot(n_sims > 1)
-
-    stopifnot(length(calc_errors) == 1)
-    stopifnot(is.logical(calc_errors))
-
-    stopifnot(length(conf) == 1)
-    stopifnot(conf > 0)
-    stopifnot(conf < 1)
-
-    stopifnot(nrow(sel_mat) == n_sims*coarseness)
-
-    stopifnot(length(cluster_count) == 1)
-    stopifnot(is.character(cluster_count))
-    if(cluster_count %in% c("single", "multi") & (n_clust_feats==0)){
-        stop("Must provide n_clust_feats if cluster_count is single or multi.")
-        stopifnot(length(n_clust_feats) == 1)
-        stopifnot(n_clust_feats == round(n_clust_feats))
-        stopifnot(n_clust_feats > 1)
-    }
-
-    stopifnot(cluster_count %in% c("none", "single", "multi", "corr"))
-
+    # Check inputs
+    checkNSBStabInputs(sel_mat, n_sims, calc_errors, conf, coarseness,
+        cluster_count, n_clust_feats, C)
     p <- ncol(sel_mat)
-
-    if(cluster_count == "corr"){
-        if(any(is.na(C))){
-            stop("Must provide C if cluster_count==corr")
-        }
-        stopifnot(ncol(C) == p)
-        stopifnot(nrow(C) == p)
-        stopifnot(all(C >= 0))
-        stopifnot(all(C <= 1))
-    }
-
     
     if(all(sel_mat == 0)){
         return(NA)
@@ -2105,6 +2070,196 @@ calcNSBStab <- function(sel_mat, n_sims=NA, calc_errors=FALSE, conf=0.95,
         stop("!(cluster_count %in% c(none, single, multi, corr))")
     }
     stop("Function calcNSBStab did not return value")
+}
+
+calcNSBStabNone <- function(sel_mat, n_sims=NA, calc_errors=FALSE, conf=0.95,
+    coarseness=1){
+    # Calculates the (empirical) stability of a feature selection method
+    # from a matrix containing several selected sets, using either the metric from
+    # Nogueira et. al (2018) or, if accounting for clustered features is
+    # desired, the method from Sechidis et. al (2019). In this metric, a 
+    # completely stable feature selection algorithm has stability 1 (in 
+    # practice, this happens when
+    # every set selected by the algorithm from separate draws of the data is
+    # identical). A feature selection algorithm that chooses features completely
+    # at random has expected value 0 under this metric. (Negative values of the
+    # metric are possible.) Optionally also calculates a confidence interval
+    # for the stability metric.
+
+    # References: 
+
+    # Nogueira, S., Sechidis, K., & Brown, G. (2018). On the stability of
+    # feature selection algorithms. Journal of Machine Learning Research, 18, 
+    # #1–54. Retrieved from http://jmlr.org/papers/v18/17-514.html.
+
+    # Sechidis, K., Papangelou, K., Nogueira, S., Weatherall, J. and Brown, G.,
+    # 2019, June. On the Stability of Feature Selection in the Presence of
+    # Feature Correlations. In ECML/PKDD (1) (pp. 327-342).
+
+    # Inputs:
+
+    # sel_mat: A matrix of sets of selected features. The number of columns
+    # is equal to the number of features. Each row contains a selected set.
+    # In selected set i, if feature j was selected then sel_mat[i, j] = 1 and
+    # if feature j was not selected then sel_mat[i, j] = 0.
+
+    # n_sims: TODO: check if this argument is no longer needed?
+
+    # calc_errors: logical; whether or not to calculate a confidence interval
+    # for the stability metric.
+
+    # conf: numeric; if calc_errors is TRUE, then a confidence interval will
+    # be calculated at this confidence level. (Must be strictly between 0 and
+    # 1.)
+
+    # coarseness: TODO: check if this argument is no longer needed?
+
+    # Returns:
+
+    # If calc_errors is FALSE: returns the value
+    # of the stability metric, which is at most 1. (Returns NA if metric
+    # is unable to be calculated, for example if sel_mat contains all 0s.) If
+    # calc_errors is TRUE, returns a length
+    # 3 numeric vector containing the calculated stability metric, a lower
+    # bound for the conf confidence interval, and an upper bound for the
+    # confidence interval.
+
+    if(is.na(n_sims)){
+        n_sims <- nrow(sel_mat)/coarseness
+    }
+
+    # Check inputs
+    checkNSBStabInputsNone(sel_mat, n_sims, calc_errors, conf, coarseness)
+    p <- ncol(sel_mat)
+    
+    if(all(sel_mat == 0)){
+        return(NA)
+    }
+    # Eliminate rows of all zeroes (no selections)
+    all_zero_rows <- apply(sel_mat, 1, function(x){all(x == 0)})
+    M <- sum(!all_zero_rows)
+    if(M <= 1){
+        return(NA)
+    }
+
+    if(M <= n_sims*coarseness/10){
+        print("Warning here")
+        warning("sum(!all_zero_rows) <= n_sims*coarseness/10")
+    }
+    sel_mat_nonzero <- sel_mat[!all_zero_rows, ]
+    stopifnot(ncol(sel_mat_nonzero) == p)
+    stopifnot(M == nrow(sel_mat_nonzero))
+
+    # Calculate s_f_squared values
+    p_hat <- colMeans(sel_mat_nonzero)
+    s_f_squared <- apply(sel_mat_nonzero, 2,
+        function(x){M/(M-1)*mean(x)*(1-mean(x))})
+    stopifnot(all.equal(s_f_squared, M/(M-1)*p_hat*(1-p_hat)))
+    k <- rowSums(sel_mat_nonzero)
+    k_bar <- mean(k)
+
+    stat <- 1 - mean(s_f_squared)/(k_bar/p*(1 - k_bar/p))
+
+    # Check output
+    stopifnot(length(stat) == 1)
+    stopifnot(is.numeric(stat) | is.integer(stat))
+    stopifnot(stat <= 1)
+
+    if(calc_errors){
+        alpha <- 1 - conf
+        stopifnot(alpha >= 0 & alpha <= 1)
+
+        # Calculate phi_hat_i's
+        phi_hat_i <- numeric(M)
+        stopifnot(ncol(sel_mat_nonzero) == length(p_hat))
+        for(i in 1:M){
+            phi_hat_i[i] <- 1/(k_bar/p*(1 - k_bar/p))*
+                (mean(sel_mat_nonzero[i, ]*p_hat) - k[i]*k_bar/p^2 +
+                stat/2*(2*k_bar*k[i]/p^2 - k[i]/p - k_bar/p + 1))
+        }
+        stopifnot(all(phi_hat_i != 0))
+        v <- 4/M^2*sum((phi_hat_i - mean(phi_hat_i))^2)
+        stopifnot(v >= 0)
+        # Calculate errors for error bars
+        margin <- qnorm(1 - alpha/2)*sqrt(v)
+
+        # Check output
+
+        stopifnot(length(margin) == 1)
+        stopifnot(is.numeric(margin) | is.integer(margin))
+        stopifnot(margin <= 1)
+        stopifnot(margin >= 0)
+
+        # Upper margin can't be greater than 1 since statistic can't be
+        # greater than 1
+        return(c(stat, stat - margin, min(stat + margin, 1)))
+    }
+
+    return(stat)
+
+}
+
+checkNSBStabInputs <- function(sel_mat, n_sims, calc_errors, conf,
+    coarseness, cluster_count, n_clust_feats, C){
+    stopifnot(is.matrix(sel_mat))
+    stopifnot(all(!is.na(sel_mat)))
+    stopifnot(all(sel_mat %in% c(0, 1)))
+
+    stopifnot(length(n_sims) == 1)
+    stopifnot(n_sims == round(n_sims))
+    stopifnot(n_sims > 1)
+
+    stopifnot(length(calc_errors) == 1)
+    stopifnot(is.logical(calc_errors))
+
+    stopifnot(length(conf) == 1)
+    stopifnot(conf > 0)
+    stopifnot(conf < 1)
+
+    stopifnot(nrow(sel_mat) == n_sims*coarseness)
+
+    stopifnot(length(cluster_count) == 1)
+    stopifnot(is.character(cluster_count))
+    if(cluster_count %in% c("single", "multi") & (n_clust_feats==0)){
+        stop("Must provide n_clust_feats if cluster_count is single or multi.")
+        stopifnot(length(n_clust_feats) == 1)
+        stopifnot(n_clust_feats == round(n_clust_feats))
+        stopifnot(n_clust_feats > 1)
+    }
+
+    stopifnot(cluster_count %in% c("none", "single", "multi", "corr"))
+
+    p <- ncol(sel_mat)
+
+    if(cluster_count == "corr"){
+        if(any(is.na(C))){
+            stop("Must provide C if cluster_count==corr")
+        }
+        stopifnot(ncol(C) == p)
+        stopifnot(nrow(C) == p)
+        stopifnot(all(C >= 0))
+        stopifnot(all(C <= 1))
+    }
+}
+
+checkNSBStabInputsNone <- function(sel_mat, n_sims, calc_errors, conf,
+    coarseness){
+    stopifnot(is.matrix(sel_mat))
+    stopifnot(all(!is.na(sel_mat)))
+    stopifnot(all(sel_mat %in% c(0, 1)))
+
+    stopifnot(length(n_sims) == 1)
+    stopifnot(n_sims == round(n_sims))
+    stopifnot(n_sims > 1)
+
+    stopifnot(length(calc_errors) == 1)
+    stopifnot(is.logical(calc_errors))
+
+    stopifnot(length(conf) == 1)
+    stopifnot(conf > 0)
+    stopifnot(conf < 1)
+
+    stopifnot(nrow(sel_mat) == n_sims*coarseness)
 }
 
 createHamStabPlot <- function(stab_mets, n_model, p, k,
@@ -4419,7 +4574,118 @@ stabsel_props <- new_method("stabsel_props", "Stability Selection",
 
 
 
+getBinMat <- function(output, meth, model_size){
+    stopifnot(length(output) == n_sims)
 
+    ret <- matrix(0, n_sims, p)
+
+    for(j in 1:n_sims){
+        output_j <- output[[j]]
+        cssr_meth <- FALSE
+        # Only need models of size model_size from method meth
+        if(meth %in% c("elastic_net", "lasso_random")){
+            feat_list <- output_j$lasso_selected
+        } else if(meth == "clusRepLasso_cssr"){
+            feat_list <- output_j$selected_clusts_list
+        } else if(meth == "protolasso_cssr"){
+            feat_list <- output_j$selected_sets
+        } else if(meth %in% c("SS_CSS_avg_cssr", "SS_CSS_sparse_cssr",
+            "SS_CSS_weighted_cssr", "SS_SS_cssr")){
+            feat_list <- output_j$selected
+            cssr_meth <- TRUE
+        }
+
+        if(!cssr_meth){
+            feat_ind <- lengths(feat_list) == model_size
+            if(any(feat_ind)){
+                feats_j <- feat_list[[min(which(feat_ind))]]
+                if(is.list(feats_j)){
+                    feats_j <- unlist(feats_j)
+                }
+                ret[j, feats_j] <- 1
+            }
+        } else{
+            feats_j <- feat_list[[model_size]]
+            if(!is.null(feats_j)){
+                ret[j, feats_j] <- 1
+            }
+        }
+    }
+    return(ret)
+}
+
+
+
+createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
+    plot_errors=TRUE, subtitle=FALSE){
+
+    if((sig_blocks + k_unblocked) %% 2 == 0){
+        max_rank <- sig_blocks + k_unblocked
+    } else{
+        max_rank <- sig_blocks + k_unblocked + 1
+    }
+
+    plot <- ggplot(df_gg, aes(x=ModelSize, y=MSE, color=Method,
+        shape=Method)) + scale_shape_manual(values=1:n_methods) +
+        suppressWarnings(geom_point(size=2.5, alpha=1)) + 
+        xlab("No. Fitted Coefficients") +
+        scale_x_continuous(breaks=seq(2, max_rank, by=2))
+
+    if(subtitle){
+        subtitle_txt <- paste("n = ", n_model, ", p = ", p, ",
+            beta_high = ", beta_high, sep="")
+        plot <- plot + labs(subtitle=subtitle_txt)
+    }
+
+    if(plot_errors){
+        plot <- plot + geom_errorbar(aes(ymin = MSELower, ymax = MSEUpper),
+            width = 0.5)
+    }
+
+    if(!legend){
+        plot <- plot + theme(legend.position="none")
+    }
+
+    return(plot)
+}
+
+createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE, 
+    subtitle=FALSE){
+    require(ggplot2)
+    
+    # Get max ranking value for integer labels on horizontal axis
+    max_rank <- max(df_gg$ModelSize)
+    if((max_rank %% 2) != 0){
+        max_rank <- max_rank + 1
+    }
+
+    if(subtitle){
+        subtitle_txt <- paste("n = ", n_model, ", p = ", p, ",
+            beta_high = ", beta_high, sep="")
+    }
+
+    plot <- ggplot(df_gg, aes(x=ModelSize, y=NSBStability,
+        color=Method, shape=Method)) + scale_shape_manual(values=1:n_methods)
+
+    plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1)) +
+        xlab("No. Fitted Coefficients") + ylab("NSB Stability") +
+        scale_x_continuous(breaks=seq(2, max_rank, by=2))
+
+    if(subtitle){
+        plot <- plot + labs(subtitle=subtitle_txt)
+    }
+
+    if(plot_errors){
+        plot <- plot + geom_errorbar(aes(ymin = StabLower, ymax = StabUpper),
+            width = 0.5)
+    }
+
+    if(!legend){
+        plot <- plot + theme(legend.position="none")
+    }
+
+    return(plot)
+}
 
 
 

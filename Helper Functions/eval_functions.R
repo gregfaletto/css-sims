@@ -228,16 +228,20 @@ cssr_mse <- new_metric("MSE", "MSE", metric = function(model, out) {
           if("css_res" %in% out_names){
                # This is a method that used the cssr package. We can use
                # getCssPreds to generate predictions.
-               return(cssr_mse_metric_func(out))
+               return(cssr_mse_metric_func(out, model$sig_blocks +
+                    model$k_unblocked))
           } else if("selected_clusts_list" %in% out_names){
                # This is the cluster representative lasso
-               return(clus_lasso_metric_func(out))
+               return(clus_lasso_metric_func(out, model$sig_blocks +
+                    model$k_unblocked))
           } else if("selected_sets" %in% out_names){
                # This is the protolasso
-               return(lasso_metric_func(out$selected_sets, out))
+               return(lasso_metric_func(out$selected_sets, out,
+                    model$sig_blocks + model$k_unblocked))
           } else if("lasso_selected" %in% out_names){
                # This is the lasso or elastic net
-               return(lasso_metric_func(out$lasso_selected, out))
+               return(lasso_metric_func(out$lasso_selected, out,
+                    model$sig_blocks + model$k_unblocked))
           }
 
           # Shouldn't be possible to reach this point
@@ -245,18 +249,21 @@ cssr_mse <- new_metric("MSE", "MSE", metric = function(model, out) {
      }
 )
 
-cssr_mse_metric_func <- function(out){
+cssr_mse_metric_func <- function(out, max_model_size){
      # method="ss" # Stability selection
      # "sparse" # sparse cluster stability selection
      # method="weighted_avg" # weighted cluster stability selection
      # method="simple_avg" # simple averaged cluster stability selection
 
      n_sets <- length(out$selected)
-     mses <- rep(as.numeric(NA), n_sets)
+     stopifnot(n_sets <= max_model_size)
+     mses <- rep(as.numeric(NA), max_model_size)
+     stopifnot("selected_clusts" %in% names(out))
      for(i in 1:n_sets){
           # Check if a selected set of size i was defined to exist--if not, skip
           # this model size
           if(!is.null(out$selected[[i]])){
+               stopifnot(length(out$selected_clusts[[i]]) == i)
                # Generate test set predictions
                mu_hat_i <- cssr::getCssPreds(out$css_res, testX=out$testX,
                     weighting=out$method, min_num_clusts=i, max_num_clusts=i,
@@ -268,10 +275,11 @@ cssr_mse_metric_func <- function(out){
      return(mses)
 }
 
-lasso_metric_func <- function(selected, out){
+lasso_metric_func <- function(selected, out, max_model_size){
 
      n_sets <- max(lengths(selected))
-     mses <- rep(as.numeric(NA), n_sets)
+     stopifnot(n_sets <= max_model_size)
+     mses <- rep(as.numeric(NA), max_model_size)
      for(i in 1:n_sets){
           inds_i <- which(lengths(selected) == i)
           if(length(inds_i) > 0){
@@ -288,14 +296,16 @@ lasso_metric_func <- function(selected, out){
 
 get_mse <- function(x_train, y_train, mu_train){
      df <- data.frame(y=y_train, x_train)
+     df <- df[, colnames(df) != "(Intercept)"]
      lin_model <- stats::lm(y ~. + 0, df)
      preds <- stats::predict.lm(lin_model)
      return(mean((preds - mu_train)^2))
 }
 
-clus_lasso_metric_func <- function(out){
+clus_lasso_metric_func <- function(out, max_model_size){
      n_sets <- length(out$selected_clusts_list)
-     mses <- rep(as.numeric(NA), n_sets)
+     stopifnot(n_sets <= max_model_size)
+     mses <- rep(as.numeric(NA), max_model_size)
      n <- length(out$testY)
      for(i in 1:n_sets){
           if(!is.null(out$selected_clusts_list[[i]])){
