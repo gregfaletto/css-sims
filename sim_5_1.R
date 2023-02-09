@@ -367,6 +367,8 @@ results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
 
 # createNSBStabPlot2(results_df)
 
+# createStabMSEPlot2(results_df, n_methods)
+
 # # NSB Stability
 # results_list <- list()
 # for(i in 1:n_methods){
@@ -390,8 +392,6 @@ results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
 # saveFigure()
 
 # createPhatPlot()
-
-# createStabMSEPlot()
 
 
 # # Getting n, p from original data generation

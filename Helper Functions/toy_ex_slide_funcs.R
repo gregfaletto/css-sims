@@ -4605,10 +4605,13 @@ getBinMat <- function(output, meth, model_size){
                 ret[j, feats_j] <- 1
             }
         } else{
-            feats_j <- feat_list[[model_size]]
-            if(!is.null(feats_j)){
-                ret[j, feats_j] <- 1
+            if(length(feat_list) >= model_size){
+                feats_j <- feat_list[[model_size]]
+                if(!is.null(feats_j)){
+                    ret[j, feats_j] <- 1
+                }
             }
+            
         }
     }
     return(ret)
@@ -4690,3 +4693,43 @@ createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE,
 
 
 
+createStabMSEPlot2 <- function(df_gg, n_methods, legend=TRUE, plot_errors=FALSE,
+    subtitle=FALSE){
+
+    require(ggplot2)
+
+    if(subtitle){
+        subtitle_txt <- paste("n = ", n_model, ", p = ", p, ", k = ", k, ",
+            beta_high = ", beta_high, sep="")
+    }
+
+    plot <- ggplot(df_gg, aes(x=NSBStability, y=MSE,
+        color=Method, shape=Method)) + scale_shape_manual(values=1:n_methods) +
+        suppressWarnings(geom_point(size=2.5, alpha=1)) + xlab("NSB Stability")
+        # + 
+        # geom_hline(yintercept=true_model_loss
+        #     # , color="red"
+        #     , linetype = "dashed"
+        #     )
+
+    if(subtitle){
+        plot <- plot + labs(subtitle=subtitle_txt)
+    }
+
+    if(plot_errors){
+        plot <- plot + geom_errorbar(aes(ymin = MSELower, ymax = MSEUpper)
+            , width = 0.05
+            )
+        if(cluster_count == "none"){
+            plot <- plot + geom_errorbar(aes(xmin = StabLower, xmax = StabUpper)
+            , width = 0.25
+            )
+        }
+    }
+
+    if(!legend){
+        plot <- plot + theme(legend.position="none")
+    }
+
+    return(plot)
+}
