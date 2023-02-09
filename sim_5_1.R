@@ -112,9 +112,9 @@ if(!(method %in% c("SS", "MB"))){
 seed1 <- 457335
 seed2 <- 734355
 n_model <- 200
-n_test <- 10000
+n_test <- 1000
 # n_sims <- 1000
-n_sims <- 5
+n_sims <- 250
 # p <- 50
 p <- 100
 # p <- as.list(c(0.5*n_model
@@ -214,6 +214,7 @@ if(run_new_sim){
         "GSS (Random Design, ranked features)") %>%
         generate_model(make_model=make_sparse_blocked_linear_model4_random_ranking2,
         n = n_model,
+        n_test = n_test,
         p = p,
         # p = as.list(c(2*n_model, 40*n_model)),
         k_unblocked = k_unblocked,
@@ -247,6 +248,7 @@ if(run_new_sim){
         "GSS (Random Design, ranked features)") %>%
         generate_model(make_model=make_sparse_blocked_linear_model4_random_ranking2,
         n = n_model,
+        n_test = n_test,
         p = p,
         k_unblocked = k_unblocked,
         beta_low = beta_low,
@@ -400,5 +402,14 @@ results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
 
 # source("toy_example_plots.R")
 
+print("Total time:")
+
+t1 <- Sys.time() - t0
+
+print(t1)
+
+print("Time per simulation:")
+
+print(t1/n_sims)
 
 

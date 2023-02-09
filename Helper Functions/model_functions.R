@@ -676,10 +676,9 @@ gen_mu_x_sd4_weighted <- function(n, p, k_unblocked, beta_low, beta_high,
     return(list(mu=mu, x=x, sd=sd, Sigma=Sigma, beta=beta, z=z, coefs=coefs))
 }
 
-random_simulate_func_weighted <- function(n, p, k_unblocked, beta_low, beta_high,
-    nblocks=1, sig_blocks=1, block_size, n_strong_block_vars, rho_high, rho_low,
-    var, snr=NA, sigma_eps_sq=NA,
-    nsim){
+random_simulate_func_weighted <- function(n, n_test, p, k_unblocked, beta_low,
+    beta_high, nblocks=1, sig_blocks=1, block_size, n_strong_block_vars,
+    rho_high, rho_low, var, snr=NA, sigma_eps_sq=NA, nsim){
     if(is.na(snr) & is.na(sigma_eps_sq)){
         stop("Must specify one of snr or sigma_eps_sq")
     }
@@ -699,7 +698,7 @@ random_simulate_func_weighted <- function(n, p, k_unblocked, beta_low, beta_high
             var=var, beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
             sigma_eps_sq=sigma_eps_sq)
 
-        test_data <- cssr::genClusteredDataWeighted(n=10000, p=p,
+        test_data <- cssr::genClusteredDataWeighted(n=n_test, p=p,
             k_unclustered=k_unblocked, cluster_size=block_size,
             n_strong_cluster_vars=n_strong_block_vars, n_clusters=nblocks,
             sig_clusters=sig_blocks, rho_high=rho_high, rho_low=rho_low,
@@ -889,7 +888,7 @@ gen_mu_x_sd4_ranking2 <- function(n, p, k_unblocked, beta_low,
     return(list(mu=mu, x=x, sd=sd, Sigma=Sigma, beta=beta, z=z, coefs=coefs))
 }
 
-random_simulate_func_ranking2 <- function(n, p, k_unblocked, beta_low,
+random_simulate_func_ranking2 <- function(n, n_test, p, k_unblocked, beta_low,
     beta_high, nblocks=1, sig_blocks=1, block_size, rho, var, snr=NA,
     sigma_eps_sq=NA, nsim){
     if(is.na(snr) & is.na(sigma_eps_sq)){
@@ -909,7 +908,7 @@ random_simulate_func_ranking2 <- function(n, p, k_unblocked, beta_low,
             beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
             sigma_eps_sq=sigma_eps_sq)
 
-        test_data <- cssr::genClusteredData(n=10000, p=p,
+        test_data <- cssr::genClusteredData(n=n_test, p=p,
             k_unclustered=k_unblocked, cluster_size=block_size,
             n_clusters=nblocks, sig_clusters=sig_blocks, rho=rho, var=var,
             beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
@@ -922,7 +921,7 @@ random_simulate_func_ranking2 <- function(n, p, k_unblocked, beta_low,
     return(ret_list)
 }
 
-make_blocked_lin_mod4_ran_weight <- function(n, p, k_unblocked, 
+make_blocked_lin_mod4_ran_weight <- function(n, n_test, p, k_unblocked, 
     beta_low, beta_high, nblocks=1, sig_blocks=1, block_size,
     n_strong_block_vars, rho_high, rho_low, var, snr=NA, sigma_eps_sq=NA) {
     # Same as make_sparse_blocked_linear_model4_random, but makes only
@@ -954,7 +953,7 @@ make_blocked_lin_mod4_ran_weight <- function(n, p, k_unblocked,
     my_model <- new_model(name = "sblm2_random_weighted", 
                 label = sprintf("Lin model (weight avg, corr blocks) (n= %s, p= %s, k_unblocked= %s, rho_high= %s)",
                     n, p, k_unblocked, nblocks, sig_blocks, rho_high, rho_low),
-                params = list(n = n,
+                params = list(n = n, n_test = n_test,
                     p = p, k_unblocked = k_unblocked, beta_low = beta_low,
                     beta_high = beta_high,
                     nblocks = nblocks, sig_blocks = sig_blocks,
@@ -976,8 +975,8 @@ make_blocked_lin_mod4_ran_weight <- function(n, p, k_unblocked,
     return(my_model)
 }
 
-make_sparse_blocked_linear_model4_random_ranking2 <- function(n, p, k_unblocked,
-    beta_low, beta_high, nblocks=1, sig_blocks=1, block_size,
+make_sparse_blocked_linear_model4_random_ranking2 <- function(n, n_test, p,
+    k_unblocked, beta_low, beta_high, nblocks=1, sig_blocks=1, block_size,
     rho, var, snr=NA, sigma_eps_sq=NA) {
     # Same as make_sparse_blocked_linear_model_random, but ith coefficient
     # of weak signal features is beta_low/sqrt(i) in order to have
@@ -999,7 +998,7 @@ make_sparse_blocked_linear_model4_random_ranking2 <- function(n, p, k_unblocked,
                 label = sprintf("Linear model2 (random design) with correlated blocks and ranked2 features (n = %s,
                     p = %s, k_unblocked = %s, nblocks = %s, sig_blocks = %s, rho = %s)",
                     n, p, k_unblocked, nblocks, sig_blocks, rho),
-                params = list(n = n,
+                params = list(n = n, n_test = n_test,
                     p = p, k_unblocked = k_unblocked,
                     beta_low = beta_low, 
                     beta_high = beta_high,

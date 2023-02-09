@@ -217,6 +217,7 @@ if(run_new_sim){
         "GSS (Random Design, Weighted Averaging)") %>%
         generate_model(make_model=make_blocked_lin_mod4_ran_weight,
         n = n_model,
+        n_test = n_test,
         p = p,
         # p = as.list(c(2*n_model, 40*n_model)),
         k_unblocked = k_unblocked,
@@ -246,6 +247,7 @@ if(run_new_sim){
         "GSS (Random Design, Weighted Averaging)") %>%
         generate_model(make_model=make_blocked_lin_mod4_ran_weight,
         n = n_model,
+        n_test = n_test,
         p = p,
         k_unblocked = k_unblocked,
         beta_low = beta_low,
@@ -436,6 +438,10 @@ sim <- "random_weighted"
 
 
 
-setwd(code_dir)
+# setwd(code_dir)
 
-source("toy_example_plots.R")
+# source("toy_example_plots.R")
+
+print("Total time:")
+
+print(Sys.time() - t0)
