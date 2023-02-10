@@ -290,7 +290,7 @@ if(run_new_sim){
             # evaluate(list(phat, labels))
     }
 
-    # save_simulation(gss_random_ranking_custom_test0)
+    save_simulation(gss_random_ranking_custom_test0)
     
 
 } else{
