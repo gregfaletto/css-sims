@@ -72,7 +72,7 @@ wd <- getwd()
 code_dir <- paste(wd, "Helper Functions", sep="/")
 # setwd("/Users/gregfaletto/Google Drive/Data Science/R/USC/Stability Selection/toy_example/New method")
 # source(file="stabsel_copy.R")
-# sim_dir <- "/Users/gregfaletto/Google Drive/Data Science/R/USC/Stability Selection/toy_example"
+# wd <- "/Users/gregfaletto/Google Drive/Data Science/R/USC/Stability Selection/toy_example"
 # setwd(wd)
 
 
@@ -90,14 +90,14 @@ setwd(wd)
 
 ###############################################
 
-# Folder in which to save figures
-folder <- "210523/Weighted Sim (presentation slides)"
+# # Folder in which to save figures
+# folder <- "210523/Weighted Sim (presentation slides)"
 
-folder_main <- "/Users/gregfaletto/Dropbox/Subspace Stability Selection/sims_6"
-folder_dir <- file.path(folder_main, folder)
-dir.create(folder_dir, showWarnings = FALSE, recursive = TRUE)
+# folder_main <- "/Users/gregfaletto/Dropbox/Subspace Stability Selection/sims_6"
+# folder_dir <- file.path(folder_main, folder)
+# dir.create(folder_dir, showWarnings = FALSE, recursive = TRUE)
 # Run simulation, or load simulation that has been previously run?
-run_new_sim <- FALSE
+run_new_sim <- TRUE
 # Titles on p_hat plots?
 p_hat_titles <- TRUE
 # legends on mse/false selection/proxy selection plots
@@ -118,24 +118,15 @@ seed2 <- 734355
 n_model <- 200
 n_test <- 10000
 n_sims <- 1000
-# n_sims <- 2
+# n_sims <- 5
 # p <- 50
-p <- as.list(c(0.5*n_model
-    # , n_model
-    # , 2*n_model 
-    # , 5*n_model
-    ))
+p <- 100
 nblocks <- 1
 sig_blocks <- 1
 k_unblocked <- 10
 beta_low <- 1
 # beta_high <- 2
-beta_high <- as.list(c(
-    # 1,
-    1.5
-    # , 2
-    # , sqrt(k_unblocked)
-    ))
+beta_high <- 1.5
 block_size <- 15
 n_strong_block_vars <- 5
 rho_high <- 0.9
@@ -185,10 +176,10 @@ n_stab_meths_to_eval <- length(stab_meths_to_eval)
 
 non_stab_meths <- setdiff(methods_to_eval, stab_meths_to_eval)
 
-# Display names of possible methods
-DISPLAY_NAMES <- ("Lasso", "Stability Selection", "Sparse CSS",
-    "Weighted Averaged CSS", "Simple Averaged CSS",
-    "Cluster Representative Lasso", "Protolasso")
+# # Display names of possible methods
+# DISPLAY_NAMES <- ("Lasso", "Stability Selection", "Sparse CSS",
+#     "Weighted Averaged CSS", "Simple Averaged CSS",
+#     "Cluster Representative Lasso", "Protolasso")
 
 # if(!("lasso_random" %in% methods_to_eval)){
 #     stop("!(lasso_random %in% methods_to_eval)")
@@ -202,7 +193,7 @@ if(calc_clust_stab & (sig_blocks != 1)){
     stop("sig_blocks != 1 (can't calculate clustered stability metric)")
 }
 
-setwd(sim_dir)
+setwd(wd)
 
 t0 <- Sys.time()
 
@@ -261,19 +252,32 @@ if(run_new_sim){
         var = var,
         snr = snr 
         # , vary_along = ifelse(n_param_combs > 1, "p", NULL)
-        , vary_along = c("p", "beta_high")
+        # , vary_along = c("p", "beta_high")
         ) %>% simulate_from_model(nsim = n_sims) %>%
-        run_method(c(lasso_random # lasso
-            , SS_SS_cssr # Stability selection (as proposed by Shah and
+        run_method(c(SS_SS_cssr # Stability selection (as proposed by Shah and
             # Samworth 2012)
-            , clusRepLasso_cssr
-            # , BRVZ_avg_unwt
-            , protolasso_cssr
-            # , SS_CSS_sparse_cssr
-            , SS_CSS_weighted_cssr
-            # , SS_CSS_avg_cssr
-            , elastic_net
-        )) %>% evaluate(list(phat, labels))
+            # SS_SS_random_custom # Stability selection (as proposed by Shah and
+            # Samworth 2012)
+            , SS_CSS_sparse_cssr # Sparse cluster stability selection
+            # , SS_GSS_random_custom # Sparse cluster stability selection
+            , SS_CSS_weighted_cssr # Weighted averaged cluster stability
+            # selection
+            # , SS_GSS_random_avg_custom # Weighted averaged cluster stability
+            # selection
+            , SS_CSS_avg_cssr # Simple averaged cluster stability
+            # selection
+            # , SS_GSS_random_avg_unwt_custom # Simple averaged cluster stability
+            # selection
+            , clusRepLasso_cssr # Cluster representative lasso
+            # , BRVZ_avg_unwt # Cluster representative lasso
+            , protolasso_cssr # Protolasso
+            # , lasso_proto # Protolasso
+            , lasso_random # Lasso
+            , elastic_net # Elastic Net
+        )) 
+
+        gss_random_weighted_custom <- evaluate(gss_random_weighted_custom,
+            list(cssr_mse))
     }
 
 
@@ -284,163 +288,125 @@ if(run_new_sim){
     gss_random_weighted_custom <- load_simulation("gss_random_weighted_custom")
 }
 
-completed_sim <- gss_random_weighted_custom
+### Generate figures
 
-rm(gss_random_weighted_custom)
+results <- genPlotDf(gss_random_weighted_custom)
 
-# Which simulation type is this? (Need for later processing)
-sim <- "random_weighted"
+results_df <- results$results_df
 
+n_methods <- results$n_methods
 
-# gss_random_weighted_custom <- run_method(gss_random_weighted_custom,
-#     methods=c(lassoSS_phat_cor_squared)) %>% evaluate(list(phat, labels))
+### Figure 4 (previously Figure 5)
 
+fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
 
+fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ])
 
+fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
 
-# # Getting n, p from original data generation
-# n <- model(gss_random_weighted_custom)@params$n
-# p <- model(gss_random_weighted_custom)@params$p
+# 2. Save the legend
+#+++++++++++++++++++++++
+legend <- get_legend(fig_4_left + theme(legend.direction="horizontal"))
 
-# gss_random_weighted_custom <- run_method(gss_random_weighted_custom, methods=c(lambda.max.cancor.ss)) 
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+fig_4_left <- fig_4_left + theme(legend.position="none")
 
-# save_simulation(sim_6e)
+fig_4_mid <- fig_4_mid + theme(legend.position="none")
 
-# save_simulation(sim_6e)
-# print("running evaluations...")
-# sim_6e <- evaluate(sim_6e, list(sc4linear, size))
-# save_simulation(sim_6e)
+fig_4_right <- fig_4_right + theme(legend.position="none")
 
+# 4. Arrange ggplot2 graphs with a specific width
+### Generate figures
 
-# if(n_param_combs == 1){
-#     if(method=="MB"){
-#         createPhatPlot(sim_model=model(gss_random_weighted_custom),
-#             sim_eval=evals(gss_random_weighted_custom),
-#             method="lassoMB_phat_random", ylab="Proportion of Subsamples",
-#             n_iters=10, title=p_hat_titles)
+results <- genPlotDf(gss_random_weighted_custom)
 
-#         createPhatPlot(sim_model=model(gss_random_weighted_custom),
-#             sim_eval=evals(gss_random_weighted_custom),
-#             method="lassoMB_phat_random", ylab="Proportion of Subsamples",
-#             tau=0.51, line=TRUE, title=p_hat_titles)
+results_df <- results$results_df
 
-#         # createPhatPlotLine(sim_model=model(gss_random_weighted_custom),
-#         #     sim_eval=evals(gss_random_weighted_custom), method="lassoMB_phat",
-#         #     ylab="Proportion of Subsamples", tau=0.51)
+n_methods <- results$n_methods
 
-#         createPhatPlot(sim_model=model(gss_random_weighted_custom),
-#             sim_eval=evals(gss_random_weighted_custom),
-#             method="lassoMB_phat_ideal_random", ylab="Stability Score",
-#             title=p_hat_titles)
+### Figure 4 (previously Figure 5)
 
-#         # createPhatPlot(sim=gss_random_weighted_custom, method="lassoMB_phat_cor_squared",
-#         #     ylab="Stability Score")
-#     }else{
-#         createPhatPlot(sim_model=model(gss_random_weighted_custom),
-#             sim_eval=evals(gss_random_weighted_custom),
-#             method="SS_SS_random", ylab="Proportion of Subsamples",
-#             n_iters=10, title=p_hat_titles)
+fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
 
-#         createPhatPlot(sim_model=model(gss_random_weighted_custom),
-#             sim_eval=evals(gss_random_weighted_custom),
-#             method="SS_SS_random", ylab="Proportion of Subsamples",
-#             tau=0.51, line=TRUE, title=p_hat_titles)
+fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ])
 
-#         # createPhatPlotLine(sim_model=model(gss_random_weighted_custom),
-#         #     sim_eval=evals(gss_random_weighted_custom), method="lassoSS_phat",
-#         #     ylab="Proportion of Subsamples", tau=0.51)
+fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
 
-#         createPhatPlot(sim_model=model(gss_random_weighted_custom),
-#             sim_eval=evals(gss_random_weighted_custom),
-#             method="SS_GSS_random", ylab="Stability Score",
-#             title=p_hat_titles)
+# 2. Save the legend
+#+++++++++++++++++++++++
+legend <- get_legend(fig_4_left + theme(legend.direction="horizontal"))
 
-#         # createPhatPlot(sim=gss_random_weighted_custom, method="lassoSS_phat_cor_squared",
-#         #     ylab="Stability Score")
-#     }
-# }else{
-#     for(p_prime in 1:n_param_combs){
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+fig_4_left <- fig_4_left + theme(legend.position="none")
 
-#         # Get parameters
+fig_4_mid <- fig_4_mid + theme(legend.position="none")
 
-#         output_p_prime <- output(gss_random_weighted_custom)[[p_prime]]
-#         params_p_prime <- model(gss_random_weighted_custom)[[p_prime]]@params
-        
-#         n_model_p_prime <- params_p_prime$n
-#         p_p_prime <- params_p_prime$p
-#         k_unblocked_p_prime <- params_p_prime$k_unblocked
-#         beta_high_p_prime <- params_p_prime$beta_high
-#         block_size_p_prime <- params_p_prime$block_size
+fig_4_right <- fig_4_right + theme(legend.position="none")
 
-#         # Skip this plot if doesen't match p_plot, beta_plot (if specified)
+# 4. Arrange ggplot2 graphs with a specific width
 
-#         if(!is.na(p_plot)){
-#             if(p_p_prime != p_plot){
-#                 next
-#             }
-#         }
+fig_4 <- grid.arrange(fig_4_left, fig_4_mid, fig_4_right, legend, ncol=3,
+    nrow = 2, layout_matrix = rbind(c(1, 2, 3), c(4, 4, 4)),
+    widths = c(1.8, 1.8, 1.8), heights = c(2.5, 0.2))
 
-#         if(!is.na(beta_plot)){
-#             if(beta_high_p_prime != beta_plot){
-#                 next
-#             }
-#         }
+fig_4 <- cowplot::ggdraw(fig_4) +
+    theme(plot.background = element_rect(fill="white", color = NA))
 
+print(fig_4)
 
+saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4.pdf")
 
-#         if(method=="MB"){
-#             createPhatPlot(sim_model=model(gss_random_weighted_custom)[[p_prime]],
-#                 sim_eval=evals(gss_random_weighted_custom)[[p_prime]],
-#                 method="lassoMB_phat_random", ylab="Proportion of Subsamples",
-#                 n_iters=1, title=p_hat_titles)
+### Versions of Figure 4 plots with all methods (for supplement)
 
-#             # createPhatPlotLine(sim_model=model(gss_random_weighted_custom)[[p_prime]],
-#             #     sim_eval=evals(gss_random_weighted_custom)[[p_prime]],
-#             #     method="lassoMB_phat", ylab="Proportion of Subsamples", tau=0.51)
+fig_4_supp_left <- createLossesPlot3(results_df, n_methods)
 
-#             createPhatPlot(sim_model=model(gss_random_weighted_custom)[[p_prime]],
-#                 sim_eval=evals(gss_random_weighted_custom)[[p_prime]],
-#                 method="lassoMB_phat_random", ylab="Proportion of Subsamples",
-#                 tau=0.51, line=TRUE, title=p_hat_titles)
+saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
+    filename="sim_2_mse_supp.pdf")
 
-#             createPhatPlot(sim_model=model(gss_random_weighted_custom)[[p_prime]],
-#                 sim_eval=evals(gss_random_weighted_custom)[[p_prime]],
-#                 method="lassoMB_phat_ideal_random", ylab="Stability Score",
-#                 title=p_hat_titles)
+fig_4_supp_mid <- createNSBStabPlot2(results_df)
 
-#             # createPhatPlot(sim=gss_random_weighted_custom, method="lassoMB_phat_cor_squared",
-#             #     ylab="Stability Score")
-#         }else{
-#             createPhatPlot(sim_model=model(gss_random_weighted_custom)[[p_prime]],
-#                 sim_eval=evals(gss_random_weighted_custom)[[p_prime]],
-#                 method="SS_SS_random", ylab="Proportion of Subsamples",
-#                 n_iters=1, title=p_hat_titles)
+saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
+    filename="sim_2_stab_supp.pdf")
 
-#             # createPhatPlotLine(sim_model=model(gss_random_weighted_custom)[[p_prime]],
-#             #     sim_eval=evals(gss_random_weighted_custom)[[p_prime]],
-#             #     method="lassoSS_phat", ylab="Proportion of Subsamples", tau=0.51)
+fig_4_supp_right <- createStabMSEPlot2(results_df, n_methods)
 
-#             createPhatPlot(sim_model=model(gss_random_weighted_custom)[[p_prime]],
-#                 sim_eval=evals(gss_random_weighted_custom)[[p_prime]],
-#                 method="SS_SS_random", ylab="Proportion of Subsamples",
-#                 tau=0.51, line=TRUE, title=p_hat_titles)
+saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
+    filename="sim_2_mse_stab_supp.pdf")
+fig_4 <- grid.arrange(fig_4_left, fig_4_mid, fig_4_right, legend, ncol=3,
+    nrow = 2, layout_matrix = rbind(c(1, 2, 3), c(4, 4, 4)),
+    widths = c(1.8, 1.8, 1.8), heights = c(2.5, 0.2))
 
-#             createPhatPlot(sim_model=model(gss_random_weighted_custom)[[p_prime]],
-#                 sim_eval=evals(gss_random_weighted_custom)[[p_prime]],
-#                 method="SS_GSS_random", ylab="Stability Score",
-#                 title=p_hat_titles)
+fig_4 <- cowplot::ggdraw(fig_4) +
+    theme(plot.background = element_rect(fill="white", color = NA))
 
-#             # createPhatPlot(sim=gss_random_weighted_custom, method="lassoSS_phat_cor_squared",
-#             #     ylab="Stability Score")
-#         }
-#     }
-# }
+print(fig_4)
 
+saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4.pdf")
 
+### Versions of Figure 4 plots with all methods (for supplement)
 
-# setwd(code_dir)
+fig_4_supp_left <- createLossesPlot3(results_df, n_methods)
 
-# source("toy_example_plots.R")
+saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
+    filename="sim_2_mse_supp.pdf")
+
+fig_4_supp_mid <- createNSBStabPlot2(results_df)
+
+saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
+    filename="sim_2_stab_supp.pdf")
+
+fig_4_supp_right <- createStabMSEPlot2(results_df, n_methods)
+
+saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
+    filename="sim_2_mse_stab_supp.pdf")
 
 print("Total time:")
 

@@ -113,8 +113,8 @@ seed1 <- 457335
 seed2 <- 734355
 n_model <- 200
 n_test <- 1000
-# n_sims <- 1000
-n_sims <- 250
+n_sims <- 1000
+# n_sims <- 100
 # p <- 50
 p <- 100
 # p <- as.list(c(0.5*n_model
@@ -297,71 +297,111 @@ if(run_new_sim){
     gss_random_ranking_custom_test0 <- load_simulation("gss_random_ranking_custom_test0")
 }
 
-completed_sim <- gss_random_ranking_custom_test0
+#### Generating figures
 
-rm(gss_random_ranking_custom_test0)
+results <- genPlotDf(gss_random_ranking_custom_test0)
+
+results_df <- results$results_df
+
+n_methods <- results$n_methods
+
+# Standalone proportion of subsamples figure
+
+prop_fig <- createPhatPlot2(output(gss_random_ranking_custom_test0,
+    methods="SS_SS_cssr")@out)
+
+saveFigure2(subdir="figures", plot=prop_fig, size="slide",
+    filename="ss_props.pdf")
+
+### Figure 2
+
+fig_2_right <- createLossesPlot3(results_df[results_df$Method %in%
+    nameMap(c("SS_SS_cssr", "lasso_random")), ], 2)
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+legend_prop_fig <- get_legend(prop_fig +
+    theme(legend.direction="horizontal"))
+
+legend_fig_2_right <- get_legend(fig_2_right +
+    theme(legend.direction="horizontal"))
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+fig_2_right_no_legend <- fig_2_right + theme(legend.position="none")
+prop_fig_no_legend <- prop_fig + theme(legend.position="none")
+
+# 4. Arrange ggplot2 graphs with a specific width
+
+fig_2 <- grid.arrange(prop_fig_no_legend,
+    fig_2_right_no_legend, legend_prop_fig, legend_fig_2_right
+    , ncol=2, nrow=2, widths=c(0.5, 0.5), heights = c(2.5, 0.2)
+    )
+
+#  # 4. Arrange ggplot2 graphs with a specific width
+
+fig_2 <- cowplot::ggdraw(fig_2) + theme(plot.background =
+    element_rect(fill="white", color = NA))
+
+saveFigure2(subdir="figures", plot=fig_2, size="mlarge", filename="fig_2.pdf")
+
+### Figure 3
+
+fig_3_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
+
+fig_3_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ])
+
+fig_3_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+legend <- get_legend(fig_3_left + theme(legend.direction="horizontal"))
+
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+fig_3_left <- fig_3_left + theme(legend.position="none")
+
+fig_3_mid <- fig_3_mid + theme(legend.position="none")
+
+fig_3_right <- fig_3_right + theme(legend.position="none")
+
+# 4. Arrange ggplot2 graphs with a specific width
+
+fig_3 <- grid.arrange(fig_3_left, fig_3_mid, fig_3_right, legend, ncol=3,
+    nrow = 2, layout_matrix = rbind(c(1, 2, 3), c(4, 4, 4)),
+    widths = c(1.8, 1.8, 1.8), heights = c(2.5, 0.2))
+
+fig_3 <- cowplot::ggdraw(fig_3) +
+    theme(plot.background = element_rect(fill="white", color = NA))
+
+print(fig_3)
+
+saveFigure2(subdir="figures", plot=fig_3, size="large", filename="fig_3.pdf")
+
+### Versions of Figure 3 plots with all methods (for supplement)
+
+fig_3_supp_left <- createLossesPlot3(results_df, n_methods)
+
+saveFigure2(subdir="figures", plot=fig_3_supp_left, size="xmlarge",
+    filename="sim_1_mse_supp.pdf")
+
+fig_3_supp_mid <- createNSBStabPlot2(results_df)
+
+saveFigure2(subdir="figures", plot=fig_3_supp_mid, size="xmlarge",
+    filename="sim_1_stab_supp.pdf")
+
+fig_3_supp_right <- createStabMSEPlot2(results_df, n_methods)
+
+saveFigure2(subdir="figures", plot=fig_3_supp_right, size="xmlarge",
+    filename="sim_1_mse_stab_supp.pdf")
+
+# saveFigure()
 
 
-# Which simulation type is this? (Need for later processing)
-sim <- "random_ranking"
-
-e <- evals(completed_sim)
-edf <- as.data.frame(e)
-
-methods <- unique(edf$Method)
-n_methods <- length(methods)
-
-alpha <- 0.05
-
-model_sizes <- rep(1:(sig_blocks + k_unblocked), times=n_methods)
-methods_vec <- nameMap(rep(methods, each=sig_blocks + k_unblocked))
-mses <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
-margins <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
-nsbstabs <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
-nsb_lowers <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
-nsb_uppers <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
-
-# Get MSEs and NSB stabilities
-for(i in 1:n_methods){
-    edf_i <- edf[edf$Method == methods[i], ]
-    # Should have a number of rows divisible by sig_blocks + k_unblocked
-    stopifnot(nrow(edf_i) %% (sig_blocks + k_unblocked) == 0)
-    stopifnot(n_sims*(sig_blocks + k_unblocked) == nrow(edf_i))
-
-    meth_i_vec <- rep(as.numeric(NA), sig_blocks + k_unblocked)
-    o_i <- output(completed_sim, methods=methods[i])@out
-
-    for(k in 1:(sig_blocks + k_unblocked)){
-        # MSE
-        inds_k <- (sig_blocks + k_unblocked)*(0:(n_sims - 1)) + k
-        stopifnot(all(inds_k %in% 1:nrow(edf_i)))
-        mses_ik <- edf_i[inds_k, "MSE"]
-
-        if(any(!is.na(mses_ik))){
-            # mse_mat[k, i] <- mean(mses_ik, na.rm=TRUE)
-            mses[(i - 1)*(sig_blocks + k_unblocked) + k] <- mean(mses_ik,
-                na.rm=TRUE)
-            # margin_mat[k, i] <- qnorm(1 - alpha/2)*sd(mses_ik, na.rm=TRUE)/
-            #     sqrt(sum(!is.na(mses_ik)))
-            margins[(i - 1)*(sig_blocks + k_unblocked) + k] <-
-                qnorm(1 - alpha/2)*sd(mses_ik, na.rm=TRUE)/
-                sqrt(sum(!is.na(mses_ik)))
-        }
-
-        # NSB Stability
-        mat_i_k <- getBinMat(o_i, methods[i], k)
-        # Get stability metric--only works if there are at least 2 simulations
-        stopifnot(n_sims > 1)
-        stab_res_ik <- calcNSBStabNone(mat_i_k, calc_errors=TRUE)
-        nsbstabs[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[1]
-        nsb_lowers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[2]
-        nsb_uppers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[3]
-    }
-}
-
-results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
-    MSELower=mses - margins, MSEUpper=mses + margins, NSBStability=nsbstabs,
-    StabLower=nsb_lowers, StabUpper=nsb_uppers)
+# createLossesPlot3(results_df[results_df$Method %in% nameMap(c("SS_SS_cssr",
+#     "lasso_random")), ], 2)
 
 # createLossesPlot3(results_df, n_methods)
 
@@ -369,38 +409,9 @@ results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
 
 # createStabMSEPlot2(results_df, n_methods)
 
-# # NSB Stability
-# results_list <- list()
-# for(i in 1:n_methods){
-#     # For each method and each model size, get a n_sims x p matrix of binary
-#     # indicators of selected features (in matrix k, entry ij = 1 if feature j=
-#     # was selected by the method on simulation i in the model of size k).
-#     # This will be used as an input to the function calcNSBStab.
-#     meth_i_vec <- rep(as.numeric(NA), sig_blocks + k_unblocked)
-#     o_i <- output(completed_sim, methods=methods[i])@out
-#     for(k in 1:(sig_blocks + k_unblocked)){
-#         mat_i_k <- getBinMat(o_i, methods[i], k)
-#         # Get stability metric--only works if there are at least 2 simulations
-#         stopifnot(n_sims > 1)
-#         meth_i_vec[k] <- calcNSBStabNone(mat_i_k)
-#     }
-#     results_list[[i]] <- meth_i_vec
-# }
-
-# names(results_list) <- methods
-
-# saveFigure()
-
-# createPhatPlot()
+# createPhatPlot2(output(completed_sim, methods="SS_SS_cssr")@out)
 
 
-# # Getting n, p from original data generation
-# n <- model(gss_random_ranking_custom_test0)@params$n
-# p <- model(gss_random_ranking_custom_test0)@params$p
-
-# setwd(code_dir)
-
-# source("toy_example_plots.R")
 
 print("Total time:")
 

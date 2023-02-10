@@ -318,8 +318,18 @@ clus_lasso_metric_func <- function(out, max_model_size){
                     clust_j_feats <- clusts_list_i[[j]]
                     if(length(clust_j_feats) == 1){
                          X_train_i[, j] <- out$testX[, clust_j_feats]
-                    } else{
-                         X_train_i[, j] <- colMeans(out$testX[, clust_j_feats])
+                    } else if(length(clust_j_feats) > 1){
+                         # print("j:")
+                         # print(j)
+                         # print("ncol(X_train_i):")
+                         # print(ncol(X_train_i))
+                         # print("clust_j_feats:")
+                         # print(clust_j_feats)
+                         # print("str(out$testX[, clust_j_feats]):")
+                         # print(str(out$testX[, clust_j_feats]))
+                         # print("str(rowMeans(out$testX[, clust_j_feats])):")
+                         # print(str(rowMeans(out$testX[, clust_j_feats])))
+                         X_train_i[, j] <- rowMeans(out$testX[, clust_j_feats])
                     }
                     
                }

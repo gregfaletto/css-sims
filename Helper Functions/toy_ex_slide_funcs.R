@@ -4733,3 +4733,180 @@ createStabMSEPlot2 <- function(df_gg, n_methods, legend=TRUE, plot_errors=FALSE,
 
     return(plot)
 }
+
+
+createPhatPlot2 <- function(output, ylab="Proportion of Subsamples",
+    feats_to_display=20, line=FALSE, tau=NA, title=FALSE){
+    # Creates bar plot of estimated probability of selection under our
+    # proposed modification to stability selection against ranking of these
+    # probabilities, in descending order of ranking (high to low estimated
+    # probabilities). Bars are color coded according to whether feature
+    # is blocked or unblocked, signal or noise.
+
+    # Outputs: ggplot2 object of plot
+
+    require(ggplot2)
+
+    if(line & is.na(tau)){
+        stop("If line is TRUE, must provide tau")
+    }
+
+    # p <- sim_model@params$p
+
+    # beta_high <- sim_model@params$beta_high
+
+    stopifnot(length(output) == n_sims)
+
+    output_1 <- output[[1]]
+
+    sel_mat <- output_1$css_res$feat_sel_mat
+
+    stopifnot(p == ncol(sel_mat))
+
+    props <- colMeans(sel_mat)
+
+    stopifnot(nblocks == 1)
+    stopifnot(sig_blocks == 1)
+
+    feat_names <- rep("Noise Features", p)
+    # Overwrite with other feature names as appropriate
+    feat_names[1:block_size] <- "Proxies For Z"
+    feat_names[(block_size + 1):(block_size + k_unblocked)] <- "Weak Signal Features"
+
+    stopifnot(length(props) == p)
+    stopifnot(length(feat_names) == p)
+    stopifnot(length(1:p) == p)
+
+    data <- data.frame(Feature=1:p, props, phat=props, Legend=feat_names)
+
+    data <- drop(data)
+
+    # Sort data in descending order of p_hat
+    data <- data[order(data$phat, decreasing=TRUE), ]
+
+    # Add a ranking variable
+    colnames_orig <- colnames(data)
+    data <- data.frame(1:p, data)
+    colnames(data) <- c("Ranking", colnames_orig)
+
+    # Keep only first feats_to_display features (easier to visualize)
+    data <- data[1:min(nrow(data), feats_to_display), ]
+
+    subtitle <- paste("p = ", p ,", beta_high = ", beta_high, sep="") 
+
+    plot <- ggplot(data, aes(x=Ranking, y=phat, fill=Legend)) + geom_col() +
+        ylab(ylab) 
+
+    if(title){
+        plot <- plot + labs(subtitle=subtitle)
+    }
+
+    if(line){
+        plot <- plot + geom_hline(yintercept=tau, linetype="dashed",
+            color="black") 
+    }
+
+    print(plot)
+
+    return(plot)
+}
+
+saveFigure2 <- function(subdir, plot, size="large", filename){
+
+    stopifnot(length(filename) == 1)
+
+    stopifnot(size %in% c("small", "medium", "mlarge", "large", "xlarge",
+        "slide", "xmlarge"))
+
+    dir_fig <- file.path(wd, subdir)
+    dir.create(dir_fig, showWarnings = FALSE, recursive = TRUE)
+    setwd(dir_fig)
+
+    if(size=="large"){
+        pdf(file=filename, title=filename, paper="special", width=10.5,
+            height=5.5, bg="white")
+    } else if(size=="mlarge"){
+        pdf(file=filename, title=filename, paper="special", width=10.5,
+            height=4, bg="white")
+    } else if(size=="xlarge"){
+        pdf(file=filename, title=filename, paper="special", width=10.5,
+            height=6.5, bg="white")
+    } else if(size=="xmlarge"){
+        pdf(file=filename, title=filename, paper="special", width=9,
+            height=6.5, bg="white")
+    } else if(size=="small"){
+        pdf(file=filename, title=filename, paper="special", width=5, height=5,
+            bg="white")
+    } else if(size=="medium"){
+        pdf(file=filename, title=filename, paper="special", width=6.4,
+            height=5.5, bg="white")
+    } else if(size=="slide"){
+        pdf(file=filename, title=filename, paper="special", width=540/72,
+            height=360/72, bg="white")
+    }
+    
+    plot(plot)
+    dev.off()
+
+    setwd(wd)
+}
+
+genPlotDf <- function(completed_sim, alpha=0.05){
+    e <- evals(completed_sim)
+    edf <- as.data.frame(e)
+
+    methods <- unique(edf$Method)
+    n_methods <- length(methods)
+
+    model_sizes <- rep(1:(sig_blocks + k_unblocked), times=n_methods)
+    methods_vec <- nameMap(rep(methods, each=sig_blocks + k_unblocked))
+    mses <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+    margins <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+    nsbstabs <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+    nsb_lowers <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+    nsb_uppers <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+
+    # Get MSEs and NSB stabilities
+    for(i in 1:n_methods){
+        edf_i <- edf[edf$Method == methods[i], ]
+        # Should have a number of rows divisible by sig_blocks + k_unblocked
+        stopifnot(nrow(edf_i) %% (sig_blocks + k_unblocked) == 0)
+        stopifnot(n_sims*(sig_blocks + k_unblocked) == nrow(edf_i))
+
+        meth_i_vec <- rep(as.numeric(NA), sig_blocks + k_unblocked)
+        o_i <- output(completed_sim, methods=methods[i])@out
+
+        for(k in 1:(sig_blocks + k_unblocked)){
+            # MSE
+            inds_k <- (sig_blocks + k_unblocked)*(0:(n_sims - 1)) + k
+            stopifnot(all(inds_k %in% 1:nrow(edf_i)))
+            mses_ik <- edf_i[inds_k, "MSE"]
+
+            if(any(!is.na(mses_ik))){
+                # mse_mat[k, i] <- mean(mses_ik, na.rm=TRUE)
+                mses[(i - 1)*(sig_blocks + k_unblocked) + k] <- mean(mses_ik,
+                    na.rm=TRUE)
+                # margin_mat[k, i] <- qnorm(1 - alpha/2)*sd(mses_ik, na.rm=TRUE)/
+                #     sqrt(sum(!is.na(mses_ik)))
+                margins[(i - 1)*(sig_blocks + k_unblocked) + k] <-
+                    qnorm(1 - alpha/2)*sd(mses_ik, na.rm=TRUE)/
+                    sqrt(sum(!is.na(mses_ik)))
+            }
+
+            # NSB Stability
+            mat_i_k <- getBinMat(o_i, methods[i], k)
+            # Get stability metric--only works if there are at least 2 simulations
+            stopifnot(n_sims > 1)
+            stab_res_ik <- calcNSBStabNone(mat_i_k, calc_errors=TRUE)
+            nsbstabs[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[1]
+            nsb_lowers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[2]
+            nsb_uppers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[3]
+        }
+    }
+
+    results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
+        MSELower=mses - margins, MSEUpper=mses + margins, NSBStability=nsbstabs,
+        StabLower=nsb_lowers, StabUpper=nsb_uppers)
+
+    return(list(results_df=results_df, n_methods=n_methods))
+}
