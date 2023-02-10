@@ -132,14 +132,21 @@ nameMap <- function(sys_name){
         "SS_SS_random_custom", "SS_SS", "SS_SS_cssr")] <- "Stability Selection"
     ret[sys_name %in%  c("lassoSS_phat_ideal", "SS_GSS_random",
         "SS_GSS_random_custom", "SS_GSS", "SS_CSS_sparse_cssr")] <- "Sparse CSS"
+    ret[sys_name %in%  c("SS_CSS_sparse_cssr_est")] <- "Sparse CSS (est. clusts)"
     ret[sys_name %in%  c("SS_GSS_random_avg", "SS_GSS_random_avg_custom",
-        "SS_GSS_avg", "SS_CSS_weighted_cssr")] <- "CSS"
+        "SS_GSS_avg", "SS_CSS_weighted_cssr")] <-
+        "CSS"
+        ret[sys_name %in%  c("SS_CSS_weighted_cssr_est")] <-
+        "CSS (est. clusts)"
     ret[sys_name %in%  c("SS_GSS_random_avg_unwt", "SS_GSS_avg_unwt",
-        "SS_GSS_random_avg_unwt_custom", "SS_CSS_avg_cssr")] <-
-        "Simple Averaged CSS"
+        "SS_GSS_random_avg_unwt_custom", "SS_CSS_avg_cssr")] <- "Simple Averaged CSS"
+    ret[sys_name %in%  c("SS_CSS_avg_cssr_est")] <- "Simple Averaged CSS (est. clusts)"
     ret[sys_name %in%  c("BRVZ_avg_unwt", "clusRepLasso_cssr")] <-
-        "Cluster Representative Lasso"
+        "Cluster Rep. Lasso"
+        ret[sys_name %in%  c("clusRepLasso_cssr_est")] <-
+        "Cluster Rep. Lasso (est. clusts)"
     ret[sys_name %in%  c("lasso_proto", "protolasso_cssr")] <- "Protolasso"
+    ret[sys_name %in%  c("protolasso_cssr_est")] <- "Protolasso (est. clusts)"
     ret[sys_name %in%  c("elastic_net")] <- "Elastic Net"
     return(ret)
 }
@@ -4585,12 +4592,14 @@ getBinMat <- function(output, meth, model_size){
         # Only need models of size model_size from method meth
         if(meth %in% c("elastic_net", "lasso_random")){
             feat_list <- output_j$lasso_selected
-        } else if(meth == "clusRepLasso_cssr"){
+        } else if(meth %in% c("clusRepLasso_cssr", "clusRepLasso_cssr_est")){
             feat_list <- output_j$selected_clusts_list
-        } else if(meth == "protolasso_cssr"){
+        } else if(meth %in% c("protolasso_cssr", "protolasso_cssr_est")){
             feat_list <- output_j$selected_sets
         } else if(meth %in% c("SS_CSS_avg_cssr", "SS_CSS_sparse_cssr",
-            "SS_CSS_weighted_cssr", "SS_SS_cssr")){
+            "SS_CSS_weighted_cssr", "SS_CSS_avg_cssr_est",
+            "SS_CSS_sparse_cssr_est", "SS_CSS_weighted_cssr_est",
+            "SS_SS_cssr")){
             feat_list <- output_j$selected
             cssr_meth <- TRUE
         }

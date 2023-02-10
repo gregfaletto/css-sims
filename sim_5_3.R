@@ -116,9 +116,13 @@ if(!(method %in% c("SS", "MB"))){
 seed1 <- 457335
 seed2 <- 734355
 n_model <- 200
+# Number of unlabeled observations used for estimating clusters
+n_clus <- 500
+# Cutoff for absolute correlation for estimated clusters
+est_clus_cutoff <- 0.5
 n_test <- 10000
-n_sims <- 1000
-# n_sims <- 5
+# n_sims <- 1000
+n_sims <- 5
 # p <- 50
 p <- 100
 nblocks <- 1
@@ -185,6 +189,27 @@ non_stab_meths <- setdiff(methods_to_eval, stab_meths_to_eval)
 #     stop("!(lasso_random %in% methods_to_eval)")
 # }
 
+known_cluster_meths <- c("SS_CSS_sparse_cssr" # Sparse cluster stability selection
+    # , SS_GSS_random_custom # Sparse cluster stability selection
+    , "SS_CSS_weighted_cssr" # Weighted averaged cluster stability
+    # selection
+    , "SS_CSS_avg_cssr" # Simple averaged cluster stability
+    # selection
+    , "clusRepLasso_cssr" # Cluster representative lasso
+    , "protolasso_cssr" # Protolasso
+    )
+
+est_cluster_meths <- c("SS_CSS_sparse_cssr_est" # Sparse cluster stability selection,
+    # estimated clusters
+    , "SS_CSS_weighted_cssr_est" # Weighted averaged cluster stability
+    # selection, estimated clusters
+    , "SS_CSS_avg_cssr_est" # Simple averaged cluster stability
+    # selection, estimated clusters
+    , "clusRepLasso_cssr_est" # Cluster representative lasso, estimated
+    # clusters
+    , "protolasso_cssr_est"
+    )
+
 # Calculate clustered stability metric?
 
 calc_clust_stab <- TRUE
@@ -212,6 +237,7 @@ if(run_new_sim){
         p = p,
         # p = as.list(c(2*n_model, 40*n_model)),
         k_unblocked = k_unblocked,
+        est_clus_cutoff=est_clus_cutoff,
         beta_low = beta_low,
         beta_high = beta_high,
         nblocks = nblocks,
@@ -238,9 +264,11 @@ if(run_new_sim){
         "GSS (Random Design, Weighted Averaging)") %>%
         generate_model(make_model=make_blocked_lin_mod4_ran_weight,
         n = n_model,
+        n_clus = n_clus,
         n_test = n_test,
         p = p,
         k_unblocked = k_unblocked,
+        est_clus_cutoff=est_clus_cutoff,
         beta_low = beta_low,
         beta_high = beta_high,
         nblocks = nblocks,
@@ -253,27 +281,30 @@ if(run_new_sim){
         snr = snr 
         # , vary_along = ifelse(n_param_combs > 1, "p", NULL)
         # , vary_along = c("p", "beta_high")
-        ) %>% simulate_from_model(nsim = n_sims) %>%
+        ) %>% simulate_from_model(nsim = n_sims)
+        
+        gss_random_weighted_custom <- gss_random_weighted_custom %>%
         run_method(c(SS_SS_cssr # Stability selection (as proposed by Shah and
-            # Samworth 2012)
-            # SS_SS_random_custom # Stability selection (as proposed by Shah and
             # Samworth 2012)
             , SS_CSS_sparse_cssr # Sparse cluster stability selection
             # , SS_GSS_random_custom # Sparse cluster stability selection
             , SS_CSS_weighted_cssr # Weighted averaged cluster stability
             # selection
-            # , SS_GSS_random_avg_custom # Weighted averaged cluster stability
-            # selection
             , SS_CSS_avg_cssr # Simple averaged cluster stability
             # selection
-            # , SS_GSS_random_avg_unwt_custom # Simple averaged cluster stability
-            # selection
             , clusRepLasso_cssr # Cluster representative lasso
-            # , BRVZ_avg_unwt # Cluster representative lasso
             , protolasso_cssr # Protolasso
-            # , lasso_proto # Protolasso
             , lasso_random # Lasso
             , elastic_net # Elastic Net
+            , SS_CSS_sparse_cssr_est # Sparse cluster stability selection,
+            # estimated clusters
+            , SS_CSS_weighted_cssr_est # Weighted averaged cluster stability
+            # selection, estimated clusters
+            , SS_CSS_avg_cssr_est # Simple averaged cluster stability
+            # selection, estimated clusters
+            , clusRepLasso_cssr_est # Cluster representative lasso, estimated
+            # clusters
+            , protolasso_cssr_est # Protolasso, estimated clusters
         )) 
 
         gss_random_weighted_custom <- evaluate(gss_random_weighted_custom,
@@ -296,48 +327,18 @@ results_df <- results$results_df
 
 n_methods <- results$n_methods
 
-### Figure 4 (previously Figure 5)
+### Figure 4 (previously Figure 5) (known clusters)
 
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ],
+    n_methods - 2 - length(est_cluster_meths))
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ])
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ])
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
-
-# 2. Save the legend
-#+++++++++++++++++++++++
-legend <- get_legend(fig_4_left + theme(legend.direction="horizontal"))
-
-# 3. Remove the legend from the box plot
-#+++++++++++++++++++++++
-fig_4_left <- fig_4_left + theme(legend.position="none")
-
-fig_4_mid <- fig_4_mid + theme(legend.position="none")
-
-fig_4_right <- fig_4_right + theme(legend.position="none")
-
-# 4. Arrange ggplot2 graphs with a specific width
-### Generate figures
-
-results <- genPlotDf(gss_random_weighted_custom)
-
-results_df <- results$results_df
-
-n_methods <- results$n_methods
-
-### Figure 4 (previously Figure 5)
-
-fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
-
-fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ])
-
-fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr"))), ], n_methods - 2)
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ],
+    n_methods - 2 - length(est_cluster_meths))
 
 # 2. Save the legend
 #+++++++++++++++++++++++
@@ -362,24 +363,58 @@ fig_4 <- cowplot::ggdraw(fig_4) +
 
 print(fig_4)
 
-saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4.pdf")
+saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4_known.pdf")
 
 ### Versions of Figure 4 plots with all methods (for supplement)
 
-fig_4_supp_left <- createLossesPlot3(results_df, n_methods)
+fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths))
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
-    filename="sim_2_mse_supp.pdf")
+    filename="sim_2_known_mse_supp.pdf")
 
-fig_4_supp_mid <- createNSBStabPlot2(results_df)
+fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(est_cluster_meths)), ])
 
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
-    filename="sim_2_stab_supp.pdf")
+    filename="sim_2_known_stab_supp.pdf")
 
-fig_4_supp_right <- createStabMSEPlot2(results_df, n_methods)
+fig_4_supp_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths))
 
 saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
-    filename="sim_2_mse_stab_supp.pdf")
+    filename="sim_2_known_mse_stab_supp.pdf")
+
+
+
+### Figure 4 (previously Figure 5) (estimated clusters)
+
+fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est",
+        known_cluster_meths))), ], n_methods - 2 - length(known_cluster_meths))
+
+fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est",
+        known_cluster_meths))), ])
+
+fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est",
+        known_cluster_meths))), ], n_methods - 2 - length(known_cluster_meths))
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+legend <- get_legend(fig_4_left + theme(legend.direction="horizontal"))
+
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+fig_4_left <- fig_4_left + theme(legend.position="none")
+
+fig_4_mid <- fig_4_mid + theme(legend.position="none")
+
+fig_4_right <- fig_4_right + theme(legend.position="none")
+
+# 4. Arrange ggplot2 graphs with a specific width
+
 fig_4 <- grid.arrange(fig_4_left, fig_4_mid, fig_4_right, legend, ncol=3,
     nrow = 2, layout_matrix = rbind(c(1, 2, 3), c(4, 4, 4)),
     widths = c(1.8, 1.8, 1.8), heights = c(2.5, 0.2))
@@ -389,24 +424,27 @@ fig_4 <- cowplot::ggdraw(fig_4) +
 
 print(fig_4)
 
-saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4.pdf")
+saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4_est.pdf")
 
 ### Versions of Figure 4 plots with all methods (for supplement)
 
-fig_4_supp_left <- createLossesPlot3(results_df, n_methods)
+fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths))
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
-    filename="sim_2_mse_supp.pdf")
+    filename="sim_2_est_mse_supp.pdf")
 
-fig_4_supp_mid <- createNSBStabPlot2(results_df)
+fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(known_cluster_meths)), ])
 
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
-    filename="sim_2_stab_supp.pdf")
+    filename="sim_2_est_stab_supp.pdf")
 
-fig_4_supp_right <- createStabMSEPlot2(results_df, n_methods)
+fig_4_supp_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths))
 
 saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
-    filename="sim_2_mse_stab_supp.pdf")
+    filename="sim_2_est_mse_stab_supp.pdf")
 
 print("Total time:")
 

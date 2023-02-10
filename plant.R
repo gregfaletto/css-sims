@@ -363,7 +363,7 @@ if(exp_analysis){
     # rm(cor_mat)
 
 
-    # 	Look at dendrogram, on a popular issue
+    # Look at dendrogram
     plot(h)
     # View(data)
 

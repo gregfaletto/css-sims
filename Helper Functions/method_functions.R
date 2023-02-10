@@ -644,7 +644,7 @@ SS_SS_random <- new_method("SS_SS_random",
 
 SS_SS_cssr <- new_method("SS_SS_cssr",
 	"S&S SS (random X, custom SS function)",
-	method = function(model, draw, B, model_size) {
+	method = function(model, draw, B) {
 	# Original stability selection procedure
 	# Get lambda
 	lambda <- cssr::getLassoLambda(X=draw$X, y=draw$y, lambda_choice="min")
@@ -656,6 +656,7 @@ SS_SS_cssr <- new_method("SS_SS_cssr",
 	# Confirm no clusters in the results
 	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X))
 
+	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- list()
 	selected_clusts <- list()
 	for(i in 1:model_size){
@@ -680,7 +681,7 @@ SS_SS_cssr <- new_method("SS_SS_cssr",
 		method="sparse", testX=draw$testX, testY=draw$testY,
 		testMu=draw$testMu))
 	},
-	settings = list(B=100, model_size=11)
+	settings = list(B=100)
 )
 
 SS_SS_random_custom <- new_method("SS_SS_random_custom",
@@ -833,23 +834,14 @@ SS_GSS_random <- new_method("SS_GSS_random",
 
 SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 	"S&S GSS (random X, custom SS function)",
-	method = function(model, draw, B, model_size) {
+	method = function(model, draw, B) {
 	# Sparse cluster stability selection
-	lambda <- cssr::getLassoLambda(draw$X, draw$y, lambda_choice="min")
-
-	stopifnot(model$nblocks == 1)
-	stopifnot(model$sig_blocks == 1)
-
-	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size,
-		num_cores=detectCores() - 1)
-
-	# Confirm cluster in the results
-	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
 
 	selected <- list()
 	selected_clusts <- list()
+	model_size <- model$k_unblocked + model$sig_blocks
 	for(i in 1:model_size){
-		res_i <- cssr::getCssSelections(res, weighting="sparse",
+		res_i <- cssr::getCssSelections(draw$res_known, weighting="sparse",
 			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
@@ -863,14 +855,44 @@ SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 		}
 	}
 
-	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
-		method="sparse", testX=draw$testX, testY=draw$testY,
-		testMu=draw$testMu))
+	return(list(css_res=draw$res_known, selected=selected,
+		selected_clusts=selected_clusts, method="sparse", testX=draw$testX,
+		testY=draw$testY, testMu=draw$testMu))
 
 	},
-	settings = list(B=100, model_size=11)
+	settings = list(B=100)
 )
 
+SS_CSS_sparse_cssr_est <- new_method("SS_CSS_sparse_cssr_est",
+	"S&S GSS (random X, custom SS function, est_clusts)",
+	method = function(model, draw, B) {
+	# Sparse cluster stability selection
+
+	selected <- list()
+	selected_clusts <- list()
+	model_size <- model$k_unblocked + model$sig_blocks
+	for(i in 1:model_size){
+		res_i <- cssr::getCssSelections(draw$res_est, weighting="sparse",
+			min_num_clusts=i, max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		stopifnot(length(clusts_i) <= length(set_i))
+		
+		if(length(clusts_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
+		}
+	}
+
+	return(list(css_res=draw$res_est, selected=selected,
+		selected_clusts=selected_clusts, method="sparse", testX=draw$testX,
+		testY=draw$testY, testMu=draw$testMu))
+
+	},
+	settings = list(B=100)
+)
 
 
 
@@ -1016,23 +1038,14 @@ SS_GSS_random_avg <- new_method("SS_GSS_random_avg",
 
 SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 	"S&S GSS (random X, averaging, custom SS function)",
-	method = function(model, draw, B, model_size) {
+	method = function(model, draw, B) {
 	# Sparse cluster stability selection
-	lambda <- cssr::getLassoLambda(draw$X, draw$y, lambda_choice="min")
 
-	stopifnot(model$nblocks == 1)
-	stopifnot(model$sig_blocks == 1)
-
-	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size,
-		num_cores=detectCores() - 1)
-
-	# Confirm cluster in the results
-	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
-
+	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- list()
 	selected_clusts <- list()
 	for(i in 1:model_size){
-		res_i <- cssr::getCssSelections(res, weighting="weighted_avg",
+		res_i <- cssr::getCssSelections(draw$res_known, weighting="weighted_avg",
 			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
@@ -1046,12 +1059,43 @@ SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 		}
 	}
 
-	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
+	return(list(css_res=draw$res_known, selected=selected,
+		selected_clusts=selected_clusts, method="weighted_avg",
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
+
+	},
+	settings = list(B=100)
+)
+
+SS_CSS_weighted_cssr_est <- new_method("SS_CSS_weighted_cssr_est",
+	"S&S GSS (random X, averaging, custom SS function, est_clusts)",
+	method = function(model, draw, B) {
+	# Sparse cluster stability selection
+
+	model_size <- model$k_unblocked + model$sig_blocks
+	selected <- list()
+	selected_clusts <- list()
+	for(i in 1:model_size){
+		res_i <- cssr::getCssSelections(draw$res_est, weighting="weighted_avg",
+			min_num_clusts=i, max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		stopifnot(length(clusts_i) <= length(set_i))
+		
+		if(length(clusts_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
+		}
+	}
+
+	return(list(css_res=draw$res_est, selected=selected, selected_clusts=selected_clusts,
 		method="weighted_avg", testX=draw$testX, testY=draw$testY,
 		testMu=draw$testMu))
 
 	},
-	settings = list(B=100, model_size=11)
+	settings = list(B=100)
 )
 
 
@@ -1240,23 +1284,14 @@ SS_GSS_random_avg_unwt <- new_method("SS_GSS_random_avg_unwt",
 
 SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
 	"S&S GSS (random X, unweighted averaging, custom SS function)",
-	method = function(model, draw, B, model_size) {
+	method = function(model, draw, B) {
 	# Simple averaged cluster stability selection
-	lambda <- cssr::getLassoLambda(draw$X, draw$y, lambda_choice="min")
 
-	stopifnot(model$nblocks == 1)
-	stopifnot(model$sig_blocks == 1)
-
-	res <- cssr::css(draw$X, draw$y, lambda=lambda, clusters=1:model$block_size,
-		num_cores=detectCores() - 1)
-
-	# Confirm cluster in the results
-	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X) - model$block_size + 1)
-
+	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- list()
 	selected_clusts <- list()
 	for(i in 1:model_size){
-		res_i <- cssr::getCssSelections(res, weighting="simple_avg",
+		res_i <- cssr::getCssSelections(draw$res_known, weighting="simple_avg",
 			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
@@ -1270,12 +1305,43 @@ SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
 		}
 	}
 
-	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
-		method="simple_avg", testX=draw$testX, testY=draw$testY,
-		testMu=draw$testMu))
+	return(list(css_res=draw$res_known, selected=selected,
+		selected_clusts=selected_clusts, method="simple_avg", testX=draw$testX,
+		testY=draw$testY, testMu=draw$testMu))
 
 	},
-	settings = list(B=100, model_size=11)
+	settings = list(B=100)
+)
+
+SS_CSS_avg_cssr_est <- new_method("SS_CSS_avg_cssr_est",
+	"S&S GSS (random X, unweighted averaging, custom SS function, clus_est)",
+	method = function(model, draw, B) {
+	# Simple averaged cluster stability selection
+
+	model_size <- model$k_unblocked + model$sig_blocks
+	selected <- list()
+	selected_clusts <- list()
+	for(i in 1:model_size){
+		res_i <- cssr::getCssSelections(draw$res_est, weighting="simple_avg",
+			min_num_clusts=i, max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		stopifnot(length(clusts_i) <= length(set_i))
+		
+		if(length(clusts_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
+		}
+	}
+
+	return(list(css_res=draw$res_est, selected=selected,
+		selected_clusts=selected_clusts, method="simple_avg", testX=draw$testX,
+		testY=draw$testY, testMu=draw$testMu))
+
+	},
+	settings = list(B=100)
 )
 
 
@@ -1391,7 +1457,7 @@ SS_GSS_random_avg_unwt_custom <- new_method("SS_GSS_random_avg_unwt_custom",
 
 clusRepLasso_cssr <- new_method("clusRepLasso_cssr",
 	"BRVZ method (random X, unweighted averaging)",
-	method = function(model, draw, model_size) {
+	method = function(model, draw) {
 	
 	stopifnot(model$nblocks == 1)
 	stopifnot(model$sig_blocks == 1)
@@ -1399,12 +1465,31 @@ clusRepLasso_cssr <- new_method("clusRepLasso_cssr",
 	res <- cssr::clusterRepLasso(draw$X, draw$y, clusters=1:model$block_size,
 		nlambda=2000)
 
+	model_size <- model$k_unblocked + model$sig_blocks
 	num_sets <- min(length(res$selected_clusts_list), model_size)
 
 	return(list(selected_clusts_list=res$selected_clusts_list[1:num_sets],
 		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
-	},
-	settings = list(model_size=11)
+	}
+)
+
+clusRepLasso_cssr_est <- new_method("clusRepLasso_cssr_est",
+	"BRVZ method (random X, unweighted averaging, est_clusts)",
+	method = function(model, draw) {
+	
+	stopifnot(model$nblocks == 1)
+	stopifnot(model$sig_blocks == 1)
+
+	# Use estimated clusters
+	res <- cssr::clusterRepLasso(draw$X, draw$y, clusters=draw$est_clusters,
+		nlambda=2000)
+
+	model_size <- model$k_unblocked + model$sig_blocks
+	num_sets <- min(length(res$selected_clusts_list), model_size)
+
+	return(list(selected_clusts_list=res$selected_clusts_list[1:num_sets],
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
+	}
 )
 
 
@@ -1471,8 +1556,7 @@ BRVZ_avg_unwt <- new_method("BRVZ_avg_unwt",
 )
 
 protolasso_cssr <- new_method("protolasso_cssr",
-	"Lasso (cluster prototype, Random design)", method=function(model, draw,
-		model_size){
+	"Lasso (cluster prototype, Random design)", method=function(model, draw){
 
 	stopifnot(model$nblocks == 1)
 	stopifnot(model$sig_blocks == 1)
@@ -1480,12 +1564,30 @@ protolasso_cssr <- new_method("protolasso_cssr",
 	res <- cssr::protolasso(draw$X, draw$y, clusters=1:model$block_size,
 		nlambda=2000)
 
+	model_size <- model$k_unblocked + model$sig_blocks
 	num_sets <- min(length(res$selected_sets), model_size)
 
 	return(list(selected_sets=res$selected_sets[1:num_sets],
 		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
-	},
-	settings = list(model_size=11)
+	}
+)
+
+protolasso_cssr_est <- new_method("protolasso_cssr_est",
+	"Lasso (cluster prototype, Random design, est_clusts)", method=function(model, draw){
+
+	stopifnot(model$nblocks == 1)
+	stopifnot(model$sig_blocks == 1)
+
+	# Use estimated clusters
+	res <- cssr::protolasso(draw$X, draw$y, clusters=draw$est_clusters,
+		nlambda=2000)
+
+	model_size <- model$k_unblocked + model$sig_blocks
+	num_sets <- min(length(res$selected_sets), model_size)
+
+	return(list(selected_sets=res$selected_sets[1:num_sets],
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
+	}
 )
 
 
@@ -1672,7 +1774,7 @@ lasso <- new_method("lasso", "Lasso",
 
 lasso_random <- new_method("lasso_random", "Lasso (Random design)",
 	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
-	method = function(model, draw, model_size) {
+	method = function(model, draw) {
 	fit <- glmnet(x=draw$X, y=draw$y, family="gaussian", alpha=1,
 		nlambda=2000, lambda.min.ratio=0.1)
 	selected <- unique(predict(fit, type="nonzero"))
@@ -1682,17 +1784,17 @@ lasso_random <- new_method("lasso_random", "Lasso (Random design)",
 		selected <- selected[2:length(selected)]
 		cond <- is.null(selected[[1]])
 	}
+	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- selected[lengths(selected) <= model_size]
 
 	return(list(lasso_selected=selected, testX=draw$testX, testY=draw$testY,
 		testMu=draw$testMu))
-	},
-	settings = list(model_size=11)
+	}
 )
 
 elastic_net <- new_method("elastic_net", "Elastic Net",
 	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
-	method = function(model, draw, model_size) {
+	method = function(model, draw) {
 	fit <- glmnet(x=draw$X, y=draw$y, family="gaussian", alpha=0.5,
 		nlambda=2000, lambda.min.ratio=0.1)
 	selected <- unique(predict(fit, type="nonzero"))
@@ -1702,12 +1804,12 @@ elastic_net <- new_method("elastic_net", "Elastic Net",
 		selected <- selected[2:length(selected)]
 		cond <- is.null(selected[[1]])
 	}
+	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- selected[lengths(selected) <= model_size]
 
 	return(list(lasso_selected=selected, testX=draw$testX, testY=draw$testY,
 		testMu=draw$testMu))
-	},
-	settings = list(model_size=11)
+	}
 )
 
 ### Lasso of size 2
