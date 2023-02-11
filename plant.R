@@ -1,29 +1,17 @@
 # setwd("/Users/gregfaletto/Documents/GitHub/css-sims")
-# setwd("/Users/gregfaletto/Google Drive/Data Science/LaTeX/Paper skeleton 2020/Real data examples/GWAS/AraGWAS/GENOTYPES")
 
+library(cssr)
 library(hdf5r)
 library(dplyr)
 library(glmnet)
 library(Metrics)
 library(ggplot2)
-# Sys.setenv("MC_CORES"=8L)
-# https://dept.stat.lsa.umich.edu/~jerrick/courses/stat701/notes/parallel.html
-# library(doMC)
 library(parallel)
 library(doParallel)
 library(ggcorrplot)
 
 library(gridExtra)
 library(cowplot)
-# library(rhdf5)
-# library(rhdf5filters)
-
-# dev.off()
-# rm(list=ls())
-
-# registerDoMC(cores = detectCores())
-# registerDoParallel()
-# options(mc.cores = parallel::detectCores()-1)
 
 cl <- parallel::makeForkCluster(nnodes=detectCores())
 doParallel::registerDoParallel(cl)
@@ -37,41 +25,19 @@ sim_dir <- getwd()
 # load data?
 load_data <- FALSE
 
-# Conduct exploratory analysis?
-exp_analysis <- FALSE
-
 # Run new study, or load study that has been previously run?
 run_new_study <- FALSE
-
-# Generate plots?
-gen_plots <- TRUE
 
 # Training set proportion
 
 selec_prop <- 0.4
 train_prop <- 0.4
-if(selec_prop + train_prop >= 1){
-	stop("selec_prop + train_prop >= 1")
-}
-# n_train <- 200
 
-# Correlation cutoff for clustering (for now, pick either 0.1 or 0.5)
-# cor_cutoff <- 0.1
+# Correlation cutoff for clustering
 cor_cutoff <- 0.5
-
-folder <- paste("210523/Real Data Example (cor_cutoff = ", cor_cutoff ,
-	", small sample size)", 
-	# ")",
-	sep="")
-
-
-folder_main <- "/Users/gregfaletto/Dropbox/Subspace Stability Selection/sims_6"
-folder_dir <- file.path(folder_main, folder)
-dir.create(folder_dir, showWarnings = FALSE, recursive = TRUE)
 
 # Number of draws to take
 n_draws <- 100
-# n_draws <- 75
 # n_draws <- 2
 
 # Number of SNPs to use in data set
@@ -82,108 +48,58 @@ p_max <- round(n_snps/10)
 
 # Largest model size to use in plots
 p_max_plots <- round(n_snps/10)
-# p_max_plots <- 60
 
 stopifnot(p_max_plots <= p_max)
 
 # Coarseness for stability plots (how many model sizes to include in one point?)
 coarseness <- round(p_max/20)
-
 coarseness_plots <- round(p_max_plots/20)
 
 # Verbose printing in loops?
 verbose <- FALSE
-
 
 # Directory where simFunctions.R is stored
 wd <- getwd()
 dir_funcs <- paste(sim_dir, "Helper Functions", sep="/")
 dir_resp <- "/Users/gregfaletto/Google Drive/Data Science/LaTeX/Paper skeleton 2020/Real data examples/GWAS/AraGWAS/database/12"
 dir_hdf5 <- "/Users/gregfaletto/Google Drive/Data Science/Python/gwas"
-# dir_funcs <- "/Users/gregfaletto/Google Drive/Data Science/LaTeX/Paper skeleton 2020/Real data examples"
 
-# dir_funcs2 <- "/Users/gregfaletto/Google Drive/Data Science/LaTeX/Generalized Stability Selection Presentation"
+# # Methods
+# methods <- c("lasso"
+# 	, "lasso_proto" # Protolasso
+# 	, "SS_SS" # Shah and Samwoth stability selection
+# 	, "SS_GSS" # Sparse generalized stability selection (Shah and Samworth version)
+# 	, "SS_GSS_avg" # Generalized stability selection (Shah and Samworth version)
+# 	# with weighted averaging
+# 	, "SS_GSS_avg_unwt" # Generalized stability selection (Shah and Samworth version)
+# 	# with unweighted (simple) averaging
+# 	, "BRVZ_avg_unwt" # Cluster representative lasso
+# 	)
 
+# n_methods <- length(methods)
 
-# # Directory where stabsel_copy.R is storeed
-# dir_stabsel <- "/Users/gregfaletto/Google Drive/Data Science/R/USC/Stability Selection/toy_example/New method"
-
-# Methods
-methods <- c("lasso"
-	, "lasso_proto" # Protolasso
-	, "SS_SS" # Shah and Samwoth stability selection
-	, "SS_GSS" # Sparse generalized stability selection (Shah and Samworth version)
-	, "SS_GSS_avg" # Generalized stability selection (Shah and Samworth version)
-	# with weighted averaging
-	, "SS_GSS_avg_unwt" # Generalized stability selection (Shah and Samworth version)
-	# with unweighted (simple) averaging
-	, "BRVZ_avg_unwt" # Cluster representative lasso
-	)
-
-n_methods <- length(methods)
-
-# Averaging methods
-averaging_methods <- c("SS_GSS_avg", "SS_GSS_avg_unwt", "BRVZ_avg_unwt")
-
-
-
-# dir_pheno <- "/Users/gregfaletto/Google Drive/Data Science/LaTeX/Paper skeleton 2020/Real data examples/GWAS/AraGWAS/database/12"
-
-
-
+# # Averaging methods
+# averaging_methods <- c("SS_GSS_avg", "SS_GSS_avg_unwt", "BRVZ_avg_unwt")
 
 # SNPs file name
-
 snps_file <- "snps50000.csv"
-
-
-
-
-
-
 
 ############# Load Functions #################
 
-# setwd(dir_stabsel)
-# source(file="stabsel_copy.R")
-
 setwd(dir_funcs)
 source(file="simFunctions.R")
-
-# setwd(dir_funcs2)
 source("toy_ex_slide_funcs.R")
-
 setwd(wd)
-
 
 if(load_data){
 
 	# Load SNP data
-
-	# data <- hdf5r::readDataSet("4.hdf5")
-
-
-	# h5ls(file="4.hdf5")
-	# data <- rhdf5::h5read(file="4.hdf5", name="snps")
-
-	# lzf filter issue: https://support.bioconductor.org/p/130731/
-
 	setwd(dir_hdf5)
 
 	df <- H5File$new("4.hdf5", mode="r")
-
 	df$ls(recursive=TRUE)
 
-	# str(df[["accessions"]][])
-
 	accessions <- as.integer(df[["accessions"]][])
-
-	# str(df[["snps"]][1:2, ])
-
-	# # workaround I need: https://github.com/satijalab/seurat/issues/2977#issuecomment-629351772
-
-	# str(df[["positions"]][])
-
 	positions <- df[["positions"]][]
 
 	df$close_all()
@@ -199,17 +115,13 @@ if(load_data){
 	setwd(wd)
 
 	print("Number of unique accessions in response data:")
-
 	print(length(unique(pheno$accession_id)))
 
 	print("Number of these that are in SNP data:")
-
 	print(sum(unique(pheno$accession_id) %in% accessions))
 
 	# Acceessions to get
-
 	acc_inds <- which(accessions %in% pheno$accession_id)
-
 
 	# Read snps file
 	print("Loading SNPs data...")
@@ -236,12 +148,6 @@ if(load_data){
 	}
 
 	colnames(snps) <- paste("x", positions[1:ncol(snps)], sep="")
-	# print("colnames(snps)[1:10]:")
-	# print(colnames(snps)[1:10])
-
-	# print(unique(apply(snps, 2, function(x) length(unique(x)))))
-
-	# unique(apply(snps, 2, function(x) length(unique(x))))
 
 	# SNPs satisfying any of the following conditions were removed:
 	# • minor allele frequency (MAF) < 1%,
@@ -262,17 +168,11 @@ if(load_data){
 
 	# • position was listed as same as another SNP ***** doesn't apply
 
-	# • position was not in genetic map. **** look into this? probably fine
+	# • position was not in genetic map. **** doesn't apply
 
-
-
-
-	print("Done!")
-
-	print("Number of SNPs:")
+	print("Done! Number of SNPs:")
 
 	p_snps <- ncol(snps)
-
 	print(p_snps)
 
 	if(p_snps > n_snps){
@@ -281,8 +181,6 @@ if(load_data){
 		p_snps <- n_snps
 		print("Done!")
 	}
-
-
 
 	# Get response (use FT10--no NAs, and also duplicate entry for accession 8424
 	# has same value in both replicates)
@@ -296,123 +194,17 @@ if(load_data){
 		stop("nrow(pheno) != length(unique(pheno$accession_id))")
 	}
 
-	data <- as.data.frame(snps)
+	data_plant <- as.data.frame(snps)
 
-	data$accession_id <- as.integer(rownames(data))
-
-	data <- left_join(data, pheno, by="accession_id")
-
-	data <- data[, colnames(data) != "accession_id"]
+	data_plant$accession_id <- as.integer(rownames(data_plant))
+	data_plant <- left_join(data_plant, pheno, by="accession_id")
+	data_plant <- data_plant[, colnames(data_plant) != "accession_id"]
 
 	if(any(is.na(data))){
 		stop("any(is.na(data))")
 	}
 
 	rownames(snps) <- paste("accession", rownames(snps), sep="")
-}
-
-if(exp_analysis){
-	
-	# 	Look at correlation matrix—say first 500 features
-	cor_mat <- cor(snps)
-
-    print("Done! Time to calculate:")
-    print(Sys.time() - t0)
-
-    # Plot correlations
-
-    no_names_cor_mat <- cor_mat
-
-    colnames(no_names_cor_mat) <- character()
-    rownames(no_names_cor_mat) <- character()
-
-    print(ggcorrplot(no_names_cor_mat[1:50, 1:50]))
-
-    cors_df <- as.data.frame(no_names_cor_mat[lower.tri(no_names_cor_mat,
-    	diag = FALSE)])
-
-    colnames(cors_df) <- "Correlations"
-
-    cor_plot <- ggplot(cors_df, aes(x=Correlations)) + geom_histogram()
-
-    print(cor_plot)
-
-    # rm(cor_plot)
-
-    print(summary(cors_df))
-
-    print("Proportion of absolute correlations greater than 0.5:")
-    print(sum(abs(cors_df$Correlations) > 0.5)/length(cors_df$Correlations))
-
-    print("Proportion of absolute correlations greater than 0.9:")
-    print(sum(abs(cors_df$Correlations) > 0.9)/length(cors_df$Correlations))
-
-    print("str(snps):")
-    print(str(snps))
-   
-    
-
-
-    # print(ggcorrplot(cor_mat))
-
-    # print(sort(abs(cor_mat[, colnames(cor_mat)=="gdp_growth"]),
-    #   decreasing=TRUE))
-
-    dist <- as.dist(1 - abs(cor_mat))
-    h <- hclust(dist)
-    # rm(cor_mat)
-
-
-    # Look at dendrogram
-    plot(h)
-    # View(data)
-
-    # we clustered the SNPs using the estimated correlations as a similarity
-    # measure with a single-linkage cutoff of 0.5, and settle for discovering 
-    # important SNP clusters.
-    ct <-  cutree(h, h=cor_cutoff)
-    # ct
-    # table(ct)
-
-    print("Number of clusters of each size:")
-
-    print(paste("Number of clusters estimated in full data set (cutoff =",
-    	cor_cutoff, "):"))
-
-    print(length(unique(ct)))
-
-    print("Number of SNPs:")
-
-    print(ncol(snps))
-
-    print("Average number of SNPs per cluster:")
-
-    print(ncol(snps)/length(unique(ct)))
-
-    print("Number of clusters of each size:")
-
-    print(table(table(ct)))
-
-
-	# 	Form hierarchical clustering based on Pearson correlation like Candes (but more stringent clustering)
-
-
-
-	# 	Histogram of response—should we log transform? Summary statistics
-	response_plot <- ggplot(data, aes(x=FT10)) + geom_histogram()
-	print(response_plot)
-
-	log_response_plot <- ggplot(data, aes(x=log(FT10))) + geom_histogram()
-	print(log_response_plot)
-	# 	Summary statistics of X matrix—histogram of frequencies at which different SNPs are present
-	# What proportion of samples have a given mutation
-	freqs <- colMeans(snps)
-	freqs <- data.frame(freqs)
-	colnames(freqs) <- "Frequencies"
-	freq_hist <- ggplot(freqs, aes(x=Frequencies)) + geom_histogram()
-	print(freq_hist)
-	# •	
-	# 	Histogram of number of mutations in a given plant
 }
 
 if(run_new_study){
@@ -443,52 +235,52 @@ if(run_new_study){
 	# mse_mat <- matrix(NA, n_draws, n_methods)
 	# colnames(mse_mat) <- methods
 
-	# Matrix to store MSE results in
+	# # Matrix to store MSE results in
 
-	losses_mat <- matrix(0, nrow=n_methods*p_max, ncol=n_draws)
-	losses_mat_rows <- character()
-	for(i in 1:n_methods){
-	    loss_name_i <- paste(methods[i], "loss")
-	    losses_mat_rows <- c(losses_mat_rows, paste(loss_name_i, 1:p_max))
-	}
-	if(length(losses_mat_rows) != nrow(losses_mat)){
-	    stop("length(losses_mat_rows) != nrow(losses_mat)")
-	}
-	rownames(losses_mat) <- losses_mat_rows
+	# losses_mat <- matrix(0, nrow=n_methods*p_max, ncol=n_draws)
+	# losses_mat_rows <- character()
+	# for(i in 1:n_methods){
+	#     loss_name_i <- paste(methods[i], "loss")
+	#     losses_mat_rows <- c(losses_mat_rows, paste(loss_name_i, 1:p_max))
+	# }
+	# if(length(losses_mat_rows) != nrow(losses_mat)){
+	#     stop("length(losses_mat_rows) != nrow(losses_mat)")
+	# }
+	# rownames(losses_mat) <- losses_mat_rows
 
-	# List of lists of matrices to store selected sets in, as binary vectors (in
-	# order to calculate stability metrics)
+	# # List of lists of matrices to store selected sets in, as binary vectors (in
+	# # order to calculate stability metrics)
 
-	sel_mats <- list()
-	for(k in 1:n_methods){
-	    list_k <- list()
-	    for(j in 1:p_max){
-	    	mat_kj <- matrix(0, n_draws, p_snps)
-	    	colnames(mat_kj) <- colnames(snps)
-	        list_k[[j]] <- mat_kj
-	    }
-	    sel_mats[[k]] <- list_k
-	    rm(list_k)
-	    rm(mat_kj)
-	}
+	# sel_mats <- list()
+	# for(k in 1:n_methods){
+	#     list_k <- list()
+	#     for(j in 1:p_max){
+	#     	mat_kj <- matrix(0, n_draws, p_snps)
+	#     	colnames(mat_kj) <- colnames(snps)
+	#         list_k[[j]] <- mat_kj
+	#     }
+	#     sel_mats[[k]] <- list_k
+	#     rm(list_k)
+	#     rm(mat_kj)
+	# }
 
 	# List of lists of matrices to store selected sets in, as binary vectors (in
 	# order to calculate stability metrics)--for purpose of stability metric
 	# (i.e., for averaging methods, includes all selected features in selected
 	# cluster)
 
-	sel_mats_stab <- list()
-	for(k in 1:n_methods){
-	    list_k <- list()
-	    for(j in 1:p_max){
-	    	mat_kj <- matrix(0, n_draws, p_snps)
-	    	colnames(mat_kj) <- colnames(snps)
-	        list_k[[j]] <- mat_kj
-	    }
-	    sel_mats_stab[[k]] <- list_k
-	    rm(list_k)
-	    rm(mat_kj)
-	}
+	# sel_mats_stab <- list()
+	# for(k in 1:n_methods){
+	#     list_k <- list()
+	#     for(j in 1:p_max){
+	#     	mat_kj <- matrix(0, n_draws, p_snps)
+	#     	colnames(mat_kj) <- colnames(snps)
+	#         list_k[[j]] <- mat_kj
+	#     }
+	#     sel_mats_stab[[k]] <- list_k
+	#     rm(list_k)
+	#     rm(mat_kj)
+	# }
 
 
 
@@ -499,11 +291,31 @@ if(run_new_study){
 	#         output_p_prime)
 	# }
 
-	# Matrix to store which model sizes existed for each sim
-	j_choices_mat <- matrix(FALSE, nrow=n_methods*p_max, ncol=n_draws)
+	# # Matrix to store which model sizes existed for each sim
+	# j_choices_mat <- matrix(FALSE, nrow=n_methods*p_max, ncol=n_draws)
 
 	# Set seed for reproducibility
 	set.seed(341)
+
+	plant_sim <- new_simulation("plant_sim", "GWAS Simulation Study") %>%
+        generate_model(make_model=plant_model, n_selec=n_selec, n_train=n_train,
+        	n_test=n_test, cor_cutoff=cor_cutoff, response_name=response_name,
+        	max_model_size=p_max)
+        %>% simulate_from_model(nsim = n_draws) %>%
+        run_method(c(SS_SS_cssr_plant # Stability selection (as proposed by Shah and
+            # Samworth 2012)
+            , SS_CSS_sparse_cssr_plant # Sparse cluster stability selection
+            , SS_CSS_weighted_cssr_plant # Weighted averaged cluster stability
+            # selection
+            , SS_CSS_avg_cssr_plant # Simple averaged cluster stability
+            # selection
+            , clusRepLasso_cssr_plant # Cluster representative lasso
+            , protolasso_cssr_plant # Protolasso
+            , lasso_random_plant # Lasso
+            , elastic_net_plant # Elastic Net
+        ))
+
+    plant_sim <- plant_sim %>% evaluate(list(cssr_mse_plant))
 
 	for(i in 1:n_draws){
 
@@ -727,150 +539,150 @@ if(run_new_study){
 	load(paste("p_max_", cor_cutoff, ".Rdata", sep=""))
 }
 
-if(gen_plots){
+### Generate plots
 
-	# MSE Plot
+# MSE Plot
 
-	mse_plot <- createLossesPlot3(losses_mat, methods, j_choices_mat,
-		legend=TRUE, coarseness=coarseness_plots, p_max_plots=p_max_plots)
+mse_plot <- createLossesPlot3(losses_mat, methods, j_choices_mat,
+	legend=TRUE, coarseness=coarseness_plots, p_max_plots=p_max_plots)
 
-	print(mse_plot)
+print(mse_plot)
 
-	saveFigure("MSE vs Num Fitted Coefs", mse_plot, size="small",
-		filename="MSE vs Num Fitted Coefs.pdf")
+saveFigure("MSE vs Num Fitted Coefs", mse_plot, size="small",
+	filename="MSE vs Num Fitted Coefs.pdf")
 
-	if(p_max/coarseness != round(p_max/coarseness)){
-		stop("p_max/coarseness != round(p_max/coarseness)")
-	}
-
-
-	# Finally, calculate stability metrics and create plot of those.
-	stab_mets_NSB <- matrix(as.numeric(NA), p_max/coarseness, n_methods)
-	# stab_mets_NSB_conf_lower <- matrix(as.numeric(NA), p_max/coarseness,
-	# 	n_methods)
-	# stab_mets_NSB_conf_upper <- matrix(as.numeric(NA), p_max/coarseness,
-	# 	n_methods)
-	for(j in 1:(p_max/coarseness)){
-	    for(k in 1:n_methods){
-	    	# Assemble sel_mats_stab I want
-	    	if(coarseness > 1){
-				j_indices <- ((j-1)*coarseness + 1):(j*coarseness)
-				sel_mat_kj <- sel_mats_stab[[k]][[j_indices[1]]]
-				for(j_prime in 2:length(j_indices)){
-					sel_mat_kj <- rbind(sel_mat_kj,
-						sel_mats_stab[[k]][[j_indices[j_prime]]])
-				}
-				# print("dim(sel_mat_kj):")
-				# print(dim(sel_mat_kj))
-				# print("sel_mat_kj:")
-				# print(sel_mat_kj)
-			} else{
-				sel_mat_kj <- sel_mats_stab[[k]][[j]]
-			}
-	        stab_mets_NSB[j, k] <- calcNSBStab(sel_mat_kj, n_draws,
-	        	calc_errors=FALSE, coarseness=coarseness)
-	        # stab_mets_NSB[j, k] <- stat_results[1]
-	        # stab_mets_NSB_conf_lower[j, k] <- stat_results[2]
-	        # stab_mets_NSB_conf_upper[j, k] <- stat_results[3]
-	    }
-	}
-
-	colnames(stab_mets_NSB) <- methods
-
-	# print("stab_mets_NSB:")
-	# print(stab_mets_NSB)
-
-	# plot_stability_NSB_ints <- createNSBStabPlot3(stab_mets_NSB,
-	#     coarseness=coarseness, plot_errors = TRUE,
-	#     lowers=stab_mets_NSB_conf_lower, uppers=stab_mets_NSB_conf_upper)
-
-	# print(plot_stability_NSB_ints)
-
-	plot_stability_NSB <- createNSBStabPlot3(stab_mets_NSB,
-	    coarseness=coarseness, plot_errors = FALSE)
-
-	print(plot_stability_NSB)
-
-	saveFigure("Stability vs Num Fitted Coefficients/Original Stabilty Metric",
-        plot_stability_NSB, size="small",
-        filename="Stability vs Num Fitted Coefficients.pdf")
-
-	stab_mse_plot <- createStabMSEPlot3(losses=losses_mat,
-		stab_mets=stab_mets_NSB, names=methods, j_choices_mat=j_choices_mat,
-		p_max_plots=p_max_plots, legend=TRUE, coarseness=coarseness,
-		plot_errors=FALSE
-		# , names_to_omit=c("lasso_proto", "BRVZ_avg_unwt")
-		)
-
-	print(stab_mse_plot)
-
-	saveFigure("Stability vs MSE/Original Stabilty Metric", stab_mse_plot,
-		size="medium", filename="Stability vs MSE.pdf")
-
-	saveFigure(subdir="Slides", plot=stab_mse_plot, size="slide",
-        filename="real_data_stab_vs_mse.pdf")
-
-
-
-
-
-
-
-
-
-
-
-	# Side-by-side plot
-
-    # 2. Save the legend
-    #+++++++++++++++++++++++
-    legend <- get_legend(mse_plot + theme(legend.direction="horizontal"))
-    # 3. Remove the legend from the box plot
-    #+++++++++++++++++++++++
-    mse_plot_no_legend <- mse_plot + theme(legend.position="none")
-    plot_stability_NSB_no_legend <- plot_stability_NSB +
-        theme(legend.position="none")
-    blankPlot <- ggplot() + geom_blank(aes(1,1)) + cowplot::theme_nothing()
-    # 4. Arrange ggplot2 graphs with a specific width
-
-    # side_plot <- grid.arrange(mse_plot_no_legend,
-    #     plot_stability_NSB_no_legend, legend
-    #     , ncol=3
-    #     , widths=c(0.4, 0.4, 0.2)
-    #     )
-
-    # side_plot <- cowplot::ggdraw(side_plot) +
-    #     theme(plot.background = element_rect(fill="white", color = NA))
-
-    # print(side_plot)
-
-    # saveFigure("MSE and Stability vs Num Fitted Coefficients/Original Stabilty Metric/Confidence Intervals",
-    #     side_plot, size="large")
-
-
-
-	# 3 figure Side-by-side plot
-
-    # 3. Remove the legend from the box plot
-    #+++++++++++++++++++++++
-    stab_mse_plot_no_legend <- stab_mse_plot + theme(legend.position="none")
-
-    # 4. Arrange ggplot2 graphs with a specific width
-
-    side_plot <- grid.arrange(mse_plot_no_legend, plot_stability_NSB_no_legend,
-    	stab_mse_plot_no_legend, legend, ncol=3, nrow = 2,
-    	layout_matrix = rbind(c(1, 2, 3), c(4, 4, 4)),
-    	widths = c(1.8, 1.8, 1.8), heights = c(2.5, 0.2))
-
-    side_plot <- cowplot::ggdraw(side_plot) +
-        theme(plot.background = element_rect(fill="white", color = NA))
-
-    print(side_plot)
-
-    saveFigure("MSE and Stability vs Num Fitted Coefficients/Original Stabilty Metric",
-        side_plot, size="xlarge", filename="3_side_plot.pdf")
-
+if(p_max/coarseness != round(p_max/coarseness)){
+	stop("p_max/coarseness != round(p_max/coarseness)")
 }
+
+
+# Finally, calculate stability metrics and create plot of those.
+stab_mets_NSB <- matrix(as.numeric(NA), p_max/coarseness, n_methods)
+# stab_mets_NSB_conf_lower <- matrix(as.numeric(NA), p_max/coarseness,
+# 	n_methods)
+# stab_mets_NSB_conf_upper <- matrix(as.numeric(NA), p_max/coarseness,
+# 	n_methods)
+for(j in 1:(p_max/coarseness)){
+    for(k in 1:n_methods){
+    	# Assemble sel_mats_stab I want
+    	if(coarseness > 1){
+			j_indices <- ((j-1)*coarseness + 1):(j*coarseness)
+			sel_mat_kj <- sel_mats_stab[[k]][[j_indices[1]]]
+			for(j_prime in 2:length(j_indices)){
+				sel_mat_kj <- rbind(sel_mat_kj,
+					sel_mats_stab[[k]][[j_indices[j_prime]]])
+			}
+			# print("dim(sel_mat_kj):")
+			# print(dim(sel_mat_kj))
+			# print("sel_mat_kj:")
+			# print(sel_mat_kj)
+		} else{
+			sel_mat_kj <- sel_mats_stab[[k]][[j]]
+		}
+        stab_mets_NSB[j, k] <- calcNSBStab(sel_mat_kj, n_draws,
+        	calc_errors=FALSE, coarseness=coarseness)
+        # stab_mets_NSB[j, k] <- stat_results[1]
+        # stab_mets_NSB_conf_lower[j, k] <- stat_results[2]
+        # stab_mets_NSB_conf_upper[j, k] <- stat_results[3]
+    }
+}
+
+colnames(stab_mets_NSB) <- methods
+
+# print("stab_mets_NSB:")
+# print(stab_mets_NSB)
+
+# plot_stability_NSB_ints <- createNSBStabPlot3(stab_mets_NSB,
+#     coarseness=coarseness, plot_errors = TRUE,
+#     lowers=stab_mets_NSB_conf_lower, uppers=stab_mets_NSB_conf_upper)
+
+# print(plot_stability_NSB_ints)
+
+plot_stability_NSB <- createNSBStabPlot3(stab_mets_NSB,
+    coarseness=coarseness, plot_errors = FALSE)
+
+print(plot_stability_NSB)
+
+saveFigure("Stability vs Num Fitted Coefficients/Original Stabilty Metric",
+    plot_stability_NSB, size="small",
+    filename="Stability vs Num Fitted Coefficients.pdf")
+
+stab_mse_plot <- createStabMSEPlot3(losses=losses_mat,
+	stab_mets=stab_mets_NSB, names=methods, j_choices_mat=j_choices_mat,
+	p_max_plots=p_max_plots, legend=TRUE, coarseness=coarseness,
+	plot_errors=FALSE
+	# , names_to_omit=c("lasso_proto", "BRVZ_avg_unwt")
+	)
+
+print(stab_mse_plot)
+
+saveFigure("Stability vs MSE/Original Stabilty Metric", stab_mse_plot,
+	size="medium", filename="Stability vs MSE.pdf")
+
+saveFigure(subdir="Slides", plot=stab_mse_plot, size="slide",
+    filename="real_data_stab_vs_mse.pdf")
+
+
+
+
+
+
+
+
+
+
+
+# Side-by-side plot
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+legend <- get_legend(mse_plot + theme(legend.direction="horizontal"))
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+mse_plot_no_legend <- mse_plot + theme(legend.position="none")
+plot_stability_NSB_no_legend <- plot_stability_NSB +
+    theme(legend.position="none")
+blankPlot <- ggplot() + geom_blank(aes(1,1)) + cowplot::theme_nothing()
+# 4. Arrange ggplot2 graphs with a specific width
+
+# side_plot <- grid.arrange(mse_plot_no_legend,
+#     plot_stability_NSB_no_legend, legend
+#     , ncol=3
+#     , widths=c(0.4, 0.4, 0.2)
+#     )
+
+# side_plot <- cowplot::ggdraw(side_plot) +
+#     theme(plot.background = element_rect(fill="white", color = NA))
+
+# print(side_plot)
+
+# saveFigure("MSE and Stability vs Num Fitted Coefficients/Original Stabilty Metric/Confidence Intervals",
+#     side_plot, size="large")
+
+
+
+# 3 figure Side-by-side plot
+
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+stab_mse_plot_no_legend <- stab_mse_plot + theme(legend.position="none")
+
+# 4. Arrange ggplot2 graphs with a specific width
+
+side_plot <- grid.arrange(mse_plot_no_legend, plot_stability_NSB_no_legend,
+	stab_mse_plot_no_legend, legend, ncol=3, nrow = 2,
+	layout_matrix = rbind(c(1, 2, 3), c(4, 4, 4)),
+	widths = c(1.8, 1.8, 1.8), heights = c(2.5, 0.2))
+
+side_plot <- cowplot::ggdraw(side_plot) +
+    theme(plot.background = element_rect(fill="white", color = NA))
+
+print(side_plot)
+
+saveFigure("MSE and Stability vs Num Fitted Coefficients/Original Stabilty Metric",
+    side_plot, size="xlarge", filename="3_side_plot.pdf")
+
+
 
 parallel::stopCluster(cl)
 

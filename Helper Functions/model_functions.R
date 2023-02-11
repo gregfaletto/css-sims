@@ -1097,3 +1097,91 @@ make_sparse_blocked_linear_model4_random_ranking2 <- function(n, n_clus, n_test,
     return(my_model)
 }
 
+plant_model <- function(n_selec, n_train, n_test, cor_cutoff, response_name,
+    max_model_size) {
+    
+    plant_mod <- new_model(name = "plant_mod"
+        , label = "GWAS Simulation Study Model"
+        , params = list(n_selec=n_selec, n_train=n_train, n_test=n_test,
+            cor_cutoff=cor_cutoff, response_name=response_name,
+            max_model_size=max_model_size)
+        , simulate = plant_sim_func
+    )
+    return(my_model)
+}
+
+plant_sim_func <- function(n_selec, n_train, n_test, cor_cutoff,
+    response_name, max_model_size, nsim){
+    n <- n_selec + n_train + n_test
+    stopifnot(n == nrow(snps_mat))
+    stopifnot(n == nrow(data_plant))
+    # List we'll return: will be length nsim, and every element will be a
+    # named list with selec_inds, train_inds, and test_inds
+
+    ret_list <- list()
+
+    for(i in 1:nsim){
+
+        selec_inds <- sample.int(n, size=n_selec, replace=FALSE)
+
+        train_inds <- sample(setdiff(1:n, selec_inds), size=n_train,
+            replace=FALSE)
+
+        # Get clusters from non-test set data
+        est_clusters <- clustEstsPlant(snps_mat=snps[c(selec_inds, train_inds),
+            snp_inds], cor_cutoff=cor_cutoff)
+
+        # Get cluster stability selection proportions on training data
+        training_data <- getPlantSelecData(train_inds, response_name)
+        X_train <- training_data$X
+        y_train <- training_data$y
+        res_est <- getRes(X_train, y_train, clusters=est_clusters)
+
+        test_inds <- setdiff(1:n, c(selec_inds, train_inds))
+
+        stopifnot(length(test_inds) == n_test)
+
+        ret_list[[i]] <- list(selec_inds=selec_inds, train_inds=train_inds,
+            test_inds=test_inds, est_clusters=est_clusters, res_est=res_est)
+    }
+    
+    return(ret_list)
+}
+
+getResPlant <- function(X, y, clusters){
+    lambda <- cssr::getLassoLambda(X, y, lambda_choice="min")
+
+    res <- cssr::css(X, y, lambda=lambda, clusters=clusters,
+        num_cores=parallel::detectCores() - 1)
+
+    return(res)
+}
+
+clustEstsPlant <- function(snps_mat, cor_cutoff){
+    cor_mat <- cor(snps_mat)
+
+    zero_sds <- apply(snps_mat, 2, function(x){length(unique(x)) == 1})
+
+    zero_sd_inds <- which(zero_sds)
+
+    for(i in zero_sd_inds){
+        cor_mat[, i] <- 0
+        cor_mat[i, ] <- 0
+        cor_mat[i, i] <- 1
+    }
+
+    dist <- stats::as.dist(1 - abs(cor_mat))
+    h <- stats::hclust(dist)
+
+    clus_assignments <-  stats::cutree(h, h=est_clus_cutoff)
+    stopifnot(length(clus_assignments) == p)
+
+    n_est_clusters <- length(unique(clus_assignments))
+
+    est_clusters <- list()
+    for(i in 1:n_est_clusters){
+      est_clusters[[i]] <- which(clus_assignments == i)
+    }
+
+    return(est_clusters)
+}

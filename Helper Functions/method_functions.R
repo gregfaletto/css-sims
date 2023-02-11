@@ -684,6 +684,59 @@ SS_SS_cssr <- new_method("SS_SS_cssr",
 	settings = list(B=100)
 )
 
+getPlantSelecData <- function(selec_inds, response_name){
+	X_selec <- snps[selec_inds, snp_inds]
+	y_selec <- data_plant[selec_inds, response_name]
+
+	stopifnot(length(y_selec) == nrow(X_selec))
+
+	return(list(X=X_selec, y=y_selec))
+}
+
+SS_SS_cssr_plant <- new_method("SS_SS_cssr_plant",
+	"S&S SS (random X, custom SS function)",
+	method = function(model, draw, B) {
+	# Original stability selection procedure
+	# Get X_selec, y_selec
+	data_ret <- getPlantSelecData(draw$selec_inds, model$response_name)
+	X <- data_ret$X
+	y <- data_ret$y
+
+	# Get lambda
+	lambda <- cssr::getLassoLambda(X=X, y=y, lambda_choice="min")
+
+	# Don't provide clusters
+	res <- cssr::css(X=X y=y, lambda=lambda, num_cores=detectCores() - 1)
+
+	# Confirm no clusters in the results
+	stopifnot(ncol(res$clus_sel_mat) == ncol(X))
+
+	selected <- list()
+	selected_clusts <- list()
+	for(i in 1:model$max_model_size){
+		res_i <- cssr::getCssSelections(res, min_num_clusts=i,
+			max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		# Number of clusters should equal number of features for regular
+		# stability selection (each "cluster" should contain a single feature)
+		stopifnot(length(set_i) == length(clusts_i))
+
+		if(length(set_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
+		}
+	}
+	# weighting doesn't matter since no clusters provided--using any weighting
+	# scheme will yield the same results in getCssPreds or getCssSelections
+	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
+		method="sparse", train_inds=draw$train_inds, test_inds=draw$test_inds))
+	},
+	settings = list(B=100)
+)
+
 SS_SS_random_custom <- new_method("SS_SS_random_custom",
 	"S&S SS (random X, custom SS function)",
 	method = function(model, draw, B) {
@@ -894,6 +947,37 @@ SS_CSS_sparse_cssr_est <- new_method("SS_CSS_sparse_cssr_est",
 	settings = list(B=100)
 )
 
+SS_CSS_sparse_cssr_plant <- new_method("SS_CSS_sparse_cssr_plant",
+	"S&S GSS (random X, custom SS function)",
+	method = function(model, draw, B) {
+	# Sparse cluster stability selection
+
+	selected <- list()
+	selected_clusts <- list()
+
+	for(i in 1:model$max_model_size){
+		res_i <- cssr::getCssSelections(draw$res_est, weighting="sparse",
+			min_num_clusts=i, max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		stopifnot(length(clusts_i) <= length(set_i))
+		
+		if(length(clusts_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
+		}
+	}
+
+	return(list(css_res=draw$res_est, selected=selected,
+		selected_clusts=selected_clusts, method="sparse",
+		test_inds=draw$test_inds))
+
+	},
+	settings = list(B=100)
+)
+
 
 
 SS_GSS_random_custom <- new_method("SS_GSS_random_custom",
@@ -1039,7 +1123,7 @@ SS_GSS_random_avg <- new_method("SS_GSS_random_avg",
 SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 	"S&S GSS (random X, averaging, custom SS function)",
 	method = function(model, draw, B) {
-	# Sparse cluster stability selection
+	# Weighted average cluster stability selection
 
 	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- list()
@@ -1070,7 +1154,7 @@ SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 SS_CSS_weighted_cssr_est <- new_method("SS_CSS_weighted_cssr_est",
 	"S&S GSS (random X, averaging, custom SS function, est_clusts)",
 	method = function(model, draw, B) {
-	# Sparse cluster stability selection
+	# Weighted average cluster stability selection
 
 	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- list()
@@ -1094,6 +1178,36 @@ SS_CSS_weighted_cssr_est <- new_method("SS_CSS_weighted_cssr_est",
 		method="weighted_avg", testX=draw$testX, testY=draw$testY,
 		testMu=draw$testMu))
 
+	},
+	settings = list(B=100)
+)
+
+SS_CSS_weighted_cssr_plant <- new_method("SS_CSS_weighted_cssr_plant",
+	"S&S GSS (random X, averaging, custom SS function, est_clusts)",
+	method = function(model, draw, B) {
+	# Weighted average cluster stability selection
+
+	selected <- list()
+	selected_clusts <- list()
+
+	for(i in 1:model$max_model_size){
+		res_i <- cssr::getCssSelections(draw$res_est, weighting="weighted_avg",
+			min_num_clusts=i, max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		stopifnot(length(clusts_i) <= length(set_i))
+		
+		if(length(clusts_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
+		}
+	}
+
+	return(list(css_res=draw$res_est, selected=selected,
+		selected_clusts=selected_clusts, method="weighted_avg",
+		test_inds=draw$test_inds))
 	},
 	settings = list(B=100)
 )

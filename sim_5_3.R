@@ -90,12 +90,6 @@ setwd(wd)
 
 ###############################################
 
-# # Folder in which to save figures
-# folder <- "210523/Weighted Sim (presentation slides)"
-
-# folder_main <- "/Users/gregfaletto/Dropbox/Subspace Stability Selection/sims_6"
-# folder_dir <- file.path(folder_main, folder)
-# dir.create(folder_dir, showWarnings = FALSE, recursive = TRUE)
 # Run simulation, or load simulation that has been previously run?
 run_new_sim <- TRUE
 # Titles on p_hat plots?
