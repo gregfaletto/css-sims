@@ -4881,6 +4881,7 @@ genPlotDf <- function(completed_sim, alpha=0.05){
         # Should have a number of rows divisible by sig_blocks + k_unblocked
         stopifnot(nrow(edf_i) %% (sig_blocks + k_unblocked) == 0)
         stopifnot(n_sims*(sig_blocks + k_unblocked) == nrow(edf_i))
+        stopifnot(n_sims > 1)
 
         meth_i_vec <- rep(as.numeric(NA), sig_blocks + k_unblocked)
         o_i <- output(completed_sim, methods=methods[i])@out

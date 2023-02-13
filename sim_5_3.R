@@ -30,8 +30,6 @@ library(cssr)
 
 library(simulator) # this file was created under simulator version 0.2.0
 library(MASS)
-# library(stabs)
-# library(lars)
 library(glmnet)
 library(digest)
 library(knitr)
@@ -41,16 +39,10 @@ library(ccaPP)
 library(Metrics)
 library(gridExtra)
 library(irlba)
-# library(Matrix)
 library(doMC)
 library(parallel)
 library(dplyr)
 library(cowplot)
-# library(hash)
-# library(digest)
-# library(hashmap)
-# library(CVXR) # For convex optimization in SC4 screening criterion evaluation;
-## can eliminate if no longer using in that function
 
 
 # PMA requires library "impute" which is no longer on CRAN. Instructions
@@ -63,8 +55,6 @@ library(cowplot)
 
 library(PMA)
 library(e1071)
-# library(pls)
-# library(glmnetUtils)
 
 ############# Load Functions #################
 
@@ -111,12 +101,12 @@ seed1 <- 457335
 seed2 <- 734355
 n_model <- 200
 # Number of unlabeled observations used for estimating clusters
-n_clus <- 500
+n_clus <- 200
 # Cutoff for absolute correlation for estimated clusters
 est_clus_cutoff <- 0.5
 n_test <- 10000
-# n_sims <- 1000
-n_sims <- 5
+n_sims <- 2000
+# n_sims <- 5
 # p <- 50
 p <- 100
 nblocks <- 1
@@ -310,7 +300,9 @@ if(run_new_sim){
     
 
 } else{
+    print("loading simulation...")
     gss_random_weighted_custom <- load_simulation("gss_random_weighted_custom")
+    print("simulation laoded!")
 }
 
 ### Generate figures

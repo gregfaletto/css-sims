@@ -706,7 +706,7 @@ SS_SS_cssr_plant <- new_method("SS_SS_cssr_plant",
 	lambda <- cssr::getLassoLambda(X=X, y=y, lambda_choice="min")
 
 	# Don't provide clusters
-	res <- cssr::css(X=X y=y, lambda=lambda, num_cores=detectCores() - 1)
+	res <- cssr::css(X=X, y=y, lambda=lambda, num_cores=detectCores() - 1)
 
 	# Confirm no clusters in the results
 	stopifnot(ncol(res$clus_sel_mat) == ncol(X))

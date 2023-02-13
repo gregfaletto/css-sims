@@ -85,7 +85,7 @@ setwd(wd)
 ###############################################
 
 # Run simulation, or load simulation that has been previously run?
-run_new_sim <- TRUE
+run_new_sim <- FALSE
 # Titles on p_hat plots?
 p_hat_titles <- TRUE
 # legends on mse/false selection/proxy selection plots
@@ -107,10 +107,10 @@ n_model <- 200
 # Cutoff for absolute correlation for estimated clusters
 est_clus_cutoff <- 0.5
 # Number of unlabeled observations used for estimating clusters
-n_clus <- 500
+n_clus <- 200
 n_test <- 1000
 # n_sims <- 1000
-n_sims <- 5
+n_sims <- 2000
 # p <- 50
 p <- 100
 # p <- as.list(c(0.5*n_model
