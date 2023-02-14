@@ -4,7 +4,7 @@
 
 library(ggplot2)
 library(Metrics)
-library(stabs)
+# library(stabs)
 
 # Directory where stabsel_copy.R is storeed
 dir_stabsel <- "/Users/gregfaletto/Google Drive/Data Science/R/USC/Stability Selection/toy_example/New method"

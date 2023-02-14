@@ -685,7 +685,7 @@ SS_SS_cssr <- new_method("SS_SS_cssr",
 )
 
 getPlantSelecData <- function(selec_inds, response_name){
-	X_selec <- snps[selec_inds, snp_inds]
+	X_selec <- snps[selec_inds, ]
 	y_selec <- data_plant[selec_inds, response_name]
 
 	stopifnot(length(y_selec) == nrow(X_selec))
@@ -972,7 +972,7 @@ SS_CSS_sparse_cssr_plant <- new_method("SS_CSS_sparse_cssr_plant",
 
 	return(list(css_res=draw$res_est, selected=selected,
 		selected_clusts=selected_clusts, method="sparse",
-		test_inds=draw$test_inds))
+		train_inds=draw$train_inds, test_inds=draw$test_inds))
 
 	},
 	settings = list(B=100)
@@ -1207,7 +1207,7 @@ SS_CSS_weighted_cssr_plant <- new_method("SS_CSS_weighted_cssr_plant",
 
 	return(list(css_res=draw$res_est, selected=selected,
 		selected_clusts=selected_clusts, method="weighted_avg",
-		test_inds=draw$test_inds))
+		train_inds=draw$train_inds, test_inds=draw$test_inds))
 	},
 	settings = list(B=100)
 )
@@ -1458,6 +1458,36 @@ SS_CSS_avg_cssr_est <- new_method("SS_CSS_avg_cssr_est",
 	settings = list(B=100)
 )
 
+SS_CSS_avg_cssr_plant <- new_method("SS_CSS_avg_cssr_plant",
+	"S&S GSS (random X, unweighted averaging, custom SS function, est_clusts)",
+	method = function(model, draw, B) {
+	# Weighted average cluster stability selection
+
+	selected <- list()
+	selected_clusts <- list()
+
+	for(i in 1:model$max_model_size){
+		res_i <- cssr::getCssSelections(draw$res_est, weighting="simple_avg",
+			min_num_clusts=i, max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		stopifnot(length(clusts_i) <= length(set_i))
+		
+		if(length(clusts_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
+		}
+	}
+
+	return(list(css_res=draw$res_est, selected=selected,
+		selected_clusts=selected_clusts, method="simple_avg",
+		train_inds=draw$train_inds, test_inds=draw$test_inds))
+	},
+	settings = list(B=100)
+)
+
 
 
 
@@ -1606,6 +1636,26 @@ clusRepLasso_cssr_est <- new_method("clusRepLasso_cssr_est",
 	}
 )
 
+clusRepLasso_cssr_plant <- new_method("clusRepLasso_cssr_plant",
+	"BRVZ method (random X, unweighted averaging, est_clusts)",
+	method = function(model, draw) {
+
+		# Get X_selec, y_selec
+		data_ret <- getPlantSelecData(draw$selec_inds, model$response_name)
+		X <- data_ret$X
+		y <- data_ret$y
+
+		# Use estimated clusters
+		res <- cssr::clusterRepLasso(X, y, clusters=draw$est_clusters,
+			nlambda=2000)
+
+		num_sets <- min(model$max_model_size, length(res$selected_clusts_list))
+
+		return(list(selected_clusts_list=res$selected_clusts_list[1:num_sets],
+			train_inds=draw$train_inds, test_inds=draw$test_inds))	
+	}
+)
+
 
 
 
@@ -1687,20 +1737,41 @@ protolasso_cssr <- new_method("protolasso_cssr",
 )
 
 protolasso_cssr_est <- new_method("protolasso_cssr_est",
-	"Lasso (cluster prototype, Random design, est_clusts)", method=function(model, draw){
+	"Lasso (cluster prototype, Random design, est_clusts)",
+	method=function(model, draw){
 
-	stopifnot(model$nblocks == 1)
-	stopifnot(model$sig_blocks == 1)
+		stopifnot(model$nblocks == 1)
+		stopifnot(model$sig_blocks == 1)
 
-	# Use estimated clusters
-	res <- cssr::protolasso(draw$X, draw$y, clusters=draw$est_clusters,
-		nlambda=2000)
+		# Use estimated clusters
+		res <- cssr::protolasso(draw$X, draw$y, clusters=draw$est_clusters,
+			nlambda=2000)
 
-	model_size <- model$k_unblocked + model$sig_blocks
-	num_sets <- min(length(res$selected_sets), model_size)
+		model_size <- model$k_unblocked + model$sig_blocks
+		num_sets <- min(length(res$selected_sets), model_size)
 
-	return(list(selected_sets=res$selected_sets[1:num_sets],
-		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
+		return(list(selected_sets=res$selected_sets[1:num_sets],
+			testX=draw$testX, testY=draw$testY, testMu=draw$testMu))	
+	}
+)
+
+protolasso_cssr_plant <- new_method("protolasso_cssr_plant",
+	"Lasso (cluster prototype, Random design, est_clusts)",
+	method=function(model, draw){
+
+		# Get X_selec, y_selec
+		data_ret <- getPlantSelecData(draw$selec_inds, model$response_name)
+		X <- data_ret$X
+		y <- data_ret$y
+
+		# Use estimated clusters
+		res <- cssr::protolasso(X, y, clusters=draw$est_clusters,
+			nlambda=2000)
+
+		num_sets <- min(model$max_model_size, length(res$selected_sets))
+
+		return(list(selected_sets=res$selected_sets[1:num_sets],
+			train_inds=draw$train_inds, test_inds=draw$test_inds))
 	}
 )
 
@@ -1906,23 +1977,73 @@ lasso_random <- new_method("lasso_random", "Lasso (Random design)",
 	}
 )
 
+lasso_random_plant <- new_method("lasso_random_plant", "Lasso (Random design)",
+	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
+	method = function(model, draw) {
+
+		# Get X_selec, y_selec
+		data_ret <- getPlantSelecData(draw$selec_inds, model$response_name)
+		X <- data_ret$X
+		y <- data_ret$y
+
+		fit <- glmnet(x=X, y=y, family="gaussian", alpha=1,
+			nlambda=2000, lambda.min.ratio=0.1)
+		selected <- unique(predict(fit, type="nonzero"))
+
+		cond <- is.null(selected[[1]])
+		while(cond){
+			selected <- selected[2:length(selected)]
+			cond <- is.null(selected[[1]])
+		}
+		selected <- selected[lengths(selected) <= model$max_model_size]
+
+		return(list(lasso_selected=selected, train_inds=draw$train_inds,
+			test_inds=draw$test_inds))
+	}
+)
+
 elastic_net <- new_method("elastic_net", "Elastic Net",
 	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
 	method = function(model, draw) {
-	fit <- glmnet(x=draw$X, y=draw$y, family="gaussian", alpha=0.5,
-		nlambda=2000, lambda.min.ratio=0.1)
-	selected <- unique(predict(fit, type="nonzero"))
+		fit <- glmnet(x=draw$X, y=draw$y, family="gaussian", alpha=0.5,
+			nlambda=2000, lambda.min.ratio=0.1)
+		selected <- unique(predict(fit, type="nonzero"))
 
-	cond <- is.null(selected[[1]])
-	while(cond){
-		selected <- selected[2:length(selected)]
 		cond <- is.null(selected[[1]])
-	}
-	model_size <- model$k_unblocked + model$sig_blocks
-	selected <- selected[lengths(selected) <= model_size]
+		while(cond){
+			selected <- selected[2:length(selected)]
+			cond <- is.null(selected[[1]])
+		}
+		model_size <- model$k_unblocked + model$sig_blocks
+		selected <- selected[lengths(selected) <= model_size]
 
-	return(list(lasso_selected=selected, testX=draw$testX, testY=draw$testY,
-		testMu=draw$testMu))
+		return(list(lasso_selected=selected, testX=draw$testX, testY=draw$testY,
+			testMu=draw$testMu))
+	}
+)
+
+elastic_net_plant <- new_method("elastic_net_plant", "Elastic Net",
+	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
+	method = function(model, draw) {
+
+		# Get X_selec, y_selec
+		data_ret <- getPlantSelecData(draw$selec_inds, model$response_name)
+		X <- data_ret$X
+		y <- data_ret$y
+
+		fit <- glmnet(x=X, y=y, family="gaussian", alpha=0.5,
+			nlambda=2000, lambda.min.ratio=0.1)
+		selected <- unique(predict(fit, type="nonzero"))
+
+		cond <- is.null(selected[[1]])
+		while(cond){
+			selected <- selected[2:length(selected)]
+			cond <- is.null(selected[[1]])
+		}
+		selected <- selected[lengths(selected) <= model$max_model_size]
+
+		return(list(lasso_selected=selected, train_inds=draw$train_inds,
+			test_inds=draw$test_inds))
 	}
 )
 

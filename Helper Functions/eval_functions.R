@@ -222,7 +222,7 @@ a2 <- new_metric("a2", "A2",
 )
 
 
-cssr_mse <- new_metric("MSE", "MSE", metric = function(model, out) {
+cssr_mse <- new_metric("cssr_mse", "MSE", metric = function(model, out) {
           out_names <- names(out)
 
           if("css_res" %in% out_names){
@@ -234,6 +234,75 @@ cssr_mse <- new_metric("MSE", "MSE", metric = function(model, out) {
                # This is the cluster representative lasso
                return(clus_lasso_metric_func(out, model$sig_blocks +
                     model$k_unblocked))
+          } else if("selected_sets" %in% out_names){
+               # This is the protolasso
+               return(lasso_metric_func(out$selected_sets, out,
+                    model$sig_blocks + model$k_unblocked))
+          } else if("lasso_selected" %in% out_names){
+               # This is the lasso or elastic net
+               return(lasso_metric_func(out$lasso_selected, out,
+                    model$sig_blocks + model$k_unblocked))
+          }
+
+          # Shouldn't be possible to reach this point
+          stop("Error: no method for evaluating MSE of this method found")
+     }
+)
+
+cssr_mse_plant <- new_metric("cssr_mse_plant", "MSE", metric = function(model,
+     out) {
+          # Get X_train, y_train, X_test, y_test
+          data_train <- getPlantSelecData(out$train_inds, model$response_name)
+          data_test <- getPlantSelecData(out$test_inds, model$response_name)
+
+          out_names <- names(out)
+
+          if("css_res" %in% out_names){
+               # This is a method that used the cssr package. We can use
+               # getCssPreds to generate predictions.
+               return(cssr_mse_metric_func_plant(out, model,
+                    X_train=data_train$X, y_train=data_train$y,
+                    X_test=data_test$X, y_test=data_test$y))
+          } else if("selected_clusts_list" %in% out_names){
+               # This is the cluster representative lasso
+               return(clus_lasso_metric_func_plant(out, model,
+                    X_train=data_train$X, y_train=data_train$y,
+                    X_test=data_test$X, y_test=data_test$y))
+          } else if("selected_sets" %in% out_names){
+               # This is the protolasso
+               return(lasso_metric_func_plant(out$selected_sets, out,
+                    model, X_train=data_train$X, y_train=data_train$y,
+                    X_test=data_test$X, y_test=data_test$y))
+          } else if("lasso_selected" %in% out_names){
+               # This is the lasso or elastic net
+               return(lasso_metric_func_plant(out$lasso_selected, out,
+                    model, X_train=data_train$X, y_train=data_train$y,
+                    X_test=data_test$X, y_test=data_test$y))
+          }
+
+          # Shouldn't be possible to reach this point
+          stop("Error: no method for evaluating MSE of this method found")
+     }
+)
+
+weight_mse <- new_metric("weight_mse", "Weight MSE", metric = function(model,
+     out) {
+          out_names <- names(out)
+
+          # This is a setting where all proxies are equally good, so
+          # optimal weights are just rep(1/block_size, block_size)
+
+          opt_weights <- rep(1/model$block_size, model$block_size)
+
+          if("css_res" %in% out_names){
+               # This is a method that used the cssr package. We can use
+               # getCssPreds to generate predictions.
+               return(cssr_mse_metric_func(out, model$sig_blocks +
+                    model$k_unblocked))
+          } else if("selected_clusts_list" %in% out_names){
+               # This is the cluster representative lasso; automatically has
+               # right weights
+               return(0)
           } else if("selected_sets" %in% out_names){
                # This is the protolasso
                return(lasso_metric_func(out$selected_sets, out,
@@ -275,6 +344,35 @@ cssr_mse_metric_func <- function(out, max_model_size){
      return(mses)
 }
 
+cssr_mse_metric_func_plant <- function(out, model, X_train, y_train, X_test,
+     y_test){
+     # method="ss" # Stability selection
+     # "sparse" # sparse cluster stability selection
+     # method="weighted_avg" # weighted cluster stability selection
+     # method="simple_avg" # simple averaged cluster stability selection
+
+     
+
+     n_sets <- length(out$selected)
+     stopifnot(n_sets <= model$max_model_size)
+     mses <- rep(as.numeric(NA), model$max_model_size)
+     stopifnot("selected_clusts" %in% names(out))
+     for(i in 1:n_sets){
+          # Check if a selected set of size i was defined to exist--if not, skip
+          # this model size
+          if(!is.null(out$selected[[i]])){
+               stopifnot(length(out$selected_clusts[[i]]) == i)
+               # Generate test set predictions
+               y_hat_i <- cssr::getCssPreds(out$css_res, testX=X_test,
+                    weighting=out$method, min_num_clusts=i, max_num_clusts=i,
+                    trainX=X_train, trainY=y_train)
+               # Calculate test set MSE
+               mses[i] <- mean((y_hat_i - y_test)^2)
+          }
+     }
+     return(mses)
+}
+
 lasso_metric_func <- function(selected, out, max_model_size){
 
      n_sets <- max(lengths(selected))
@@ -294,12 +392,46 @@ lasso_metric_func <- function(selected, out, max_model_size){
      return(mses)
 }
 
+lasso_metric_func_plant <- function(selected, out, model, X_train, y_train,
+     X_test, y_test){
+
+     n_sets <- max(lengths(selected))
+     stopifnot(n_sets <= model$max_model_size)
+     mses <- rep(as.numeric(NA), model$max_model_size)
+     for(i in 1:n_sets){
+          inds_i <- which(lengths(selected) == i)
+          if(length(inds_i) > 0){
+               if(length(inds_i) > 1){
+                    sel_set_i <- selected[inds_i][[1]]
+               } else{
+                    sel_set_i <- selected[[inds_i]]
+               }
+               mses[i] <- get_mse_plant(X_train[, sel_set_i], y_train,
+                    X_test[, sel_set_i], y_test)
+          }
+     }
+     return(mses)
+}
+
 get_mse <- function(x_train, y_train, mu_train){
      df <- data.frame(y=y_train, x_train)
      df <- df[, colnames(df) != "(Intercept)"]
      lin_model <- stats::lm(y ~. + 0, df)
      preds <- stats::predict.lm(lin_model)
      return(mean((preds - mu_train)^2))
+}
+
+get_mse_plant <- function(x_train, y_train, x_test, y_test){
+     df_train <- data.frame(y=y_train, x_train)
+     df_train <- df_train[, colnames(df_train) != "(Intercept)"]
+
+     df_test <- data.frame(y=y_test, x_test)
+     df_test <- df_test[, colnames(df_test) != "(Intercept)"]
+     colnames(df_test) <- colnames(df_train)
+
+     lin_model <- stats::lm(y ~., df_train)
+     preds <- stats::predict.lm(lin_model, newdata=df_test)
+     return(mean((preds - y_test)^2))
 }
 
 clus_lasso_metric_func <- function(out, max_model_size){
@@ -319,16 +451,6 @@ clus_lasso_metric_func <- function(out, max_model_size){
                     if(length(clust_j_feats) == 1){
                          X_train_i[, j] <- out$testX[, clust_j_feats]
                     } else if(length(clust_j_feats) > 1){
-                         # print("j:")
-                         # print(j)
-                         # print("ncol(X_train_i):")
-                         # print(ncol(X_train_i))
-                         # print("clust_j_feats:")
-                         # print(clust_j_feats)
-                         # print("str(out$testX[, clust_j_feats]):")
-                         # print(str(out$testX[, clust_j_feats]))
-                         # print("str(rowMeans(out$testX[, clust_j_feats])):")
-                         # print(str(rowMeans(out$testX[, clust_j_feats])))
                          X_train_i[, j] <- rowMeans(out$testX[, clust_j_feats])
                     }
                     
@@ -336,6 +458,40 @@ clus_lasso_metric_func <- function(out, max_model_size){
                stopifnot(all(!is.na(X_train_i)))
 
                mses[i] <- get_mse(X_train_i, out$testY, out$testMu)
+          }
+     }
+     return(mses)
+}
+
+clus_lasso_metric_func_plant <- function(out, model, X_train, y_train, X_test,
+     y_test){
+     n_sets <- length(out$selected_clusts_list)
+     stopifnot(n_sets <= model$max_model_size)
+     mses <- rep(as.numeric(NA), model$max_model_size)
+     n_train <- length(y_train)
+     n_test <- length(y_test)
+     for(i in 1:n_sets){
+          if(!is.null(out$selected_clusts_list[[i]])){
+               clusts_list_i <- out$selected_clusts_list[[i]]
+               stopifnot(length(clusts_list_i) == i)
+
+               X_train_i <- matrix(as.numeric(NA), nrow=n_train, ncol=i)
+               X_test_i <- matrix(as.numeric(NA), nrow=n_test, ncol=i)
+
+               for(j in 1:i){
+                    clust_j_feats <- clusts_list_i[[j]]
+                    if(length(clust_j_feats) == 1){
+                         X_train_i[, j] <- X_train[, clust_j_feats]
+                         X_test_i[, j] <- X_test[, clust_j_feats]
+                    } else if(length(clust_j_feats) > 1){
+                         X_train_i[, j] <- rowMeans(X_train[, clust_j_feats])
+                         X_test_i[, j] <- rowMeans(X_test[, clust_j_feats])
+                    }   
+               }
+               stopifnot(all(!is.na(X_train_i)))
+               stopifnot(all(!is.na(X_test_i)))
+
+               mses[i] <- get_mse_plant(X_train_i, y_train, X_test_i, y_test)
           }
      }
      return(mses)

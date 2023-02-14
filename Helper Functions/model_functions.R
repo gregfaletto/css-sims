@@ -694,7 +694,7 @@ random_simulate_func_weighted <- function(n, n_clus, n_test, p, k_unblocked,
             k_unclustered=k_unblocked, cluster_size=block_size,
             n_strong_cluster_vars=n_strong_block_vars, n_clusters=nblocks,
             sig_clusters=sig_blocks, rho_high=rho_high, rho_low=rho_low,
-            var=var, beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
+            beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
             sigma_eps_sq=sigma_eps_sq)
 
         # Estimate clusters on clus_data
@@ -704,14 +704,14 @@ random_simulate_func_weighted <- function(n, n_clus, n_test, p, k_unblocked,
             k_unclustered=k_unblocked, cluster_size=block_size,
             n_strong_cluster_vars=n_strong_block_vars, n_clusters=nblocks,
             sig_clusters=sig_blocks, rho_high=rho_high, rho_low=rho_low,
-            var=var, beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
+            beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
             sigma_eps_sq=sigma_eps_sq)
 
         test_data <- cssr::genClusteredDataWeighted(n=n_test, p=p,
             k_unclustered=k_unblocked, cluster_size=block_size,
             n_strong_cluster_vars=n_strong_block_vars, n_clusters=nblocks,
             sig_clusters=sig_blocks, rho_high=rho_high, rho_low=rho_low,
-            var=var, beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
+            beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
             sigma_eps_sq=sigma_eps_sq)
 
         # All stability selection methods can use same output (other than
@@ -930,7 +930,7 @@ random_simulate_func_ranking2 <- function(n, n_clus, n_test, p, k_unblocked,
         # Cluster estimation data
         clus_data <- cssr::genClusteredData(n=n_clus, p=p,
             k_unclustered=k_unblocked, cluster_size=block_size,
-            n_clusters=nblocks, sig_clusters=sig_blocks, rho=rho, var=var,
+            n_clusters=nblocks, sig_clusters=sig_blocks, rho=rho,
             beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
             sigma_eps_sq=sigma_eps_sq)
 
@@ -939,14 +939,14 @@ random_simulate_func_ranking2 <- function(n, n_clus, n_test, p, k_unblocked,
         # Feature selection data
         gen_mu_x_y_sd_res <- cssr::genClusteredData(n=n, p=p,
             k_unclustered=k_unblocked, cluster_size=block_size,
-            n_clusters=nblocks, sig_clusters=sig_blocks, rho=rho, var=var,
+            n_clusters=nblocks, sig_clusters=sig_blocks, rho=rho,
             beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
             sigma_eps_sq=sigma_eps_sq)
 
         # Training/test data
         test_data <- cssr::genClusteredData(n=n_test, p=p,
             k_unclustered=k_unblocked, cluster_size=block_size,
-            n_clusters=nblocks, sig_clusters=sig_blocks, rho=rho, var=var,
+            n_clusters=nblocks, sig_clusters=sig_blocks, rho=rho,
             beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
             sigma_eps_sq=sigma_eps_sq)
 
@@ -1107,13 +1107,13 @@ plant_model <- function(n_selec, n_train, n_test, cor_cutoff, response_name,
             max_model_size=max_model_size)
         , simulate = plant_sim_func
     )
-    return(my_model)
+    return(plant_mod)
 }
 
 plant_sim_func <- function(n_selec, n_train, n_test, cor_cutoff,
     response_name, max_model_size, nsim){
     n <- n_selec + n_train + n_test
-    stopifnot(n == nrow(snps_mat))
+    stopifnot(n == nrow(snps))
     stopifnot(n == nrow(data_plant))
     # List we'll return: will be length nsim, and every element will be a
     # named list with selec_inds, train_inds, and test_inds
@@ -1128,14 +1128,14 @@ plant_sim_func <- function(n_selec, n_train, n_test, cor_cutoff,
             replace=FALSE)
 
         # Get clusters from non-test set data
-        est_clusters <- clustEstsPlant(snps_mat=snps[c(selec_inds, train_inds),
-            snp_inds], cor_cutoff=cor_cutoff)
+        est_clusters <- clustEstsPlant(snps_mat=snps[c(selec_inds, train_inds), ],
+            cor_cutoff=cor_cutoff)
 
         # Get cluster stability selection proportions on training data
         training_data <- getPlantSelecData(train_inds, response_name)
         X_train <- training_data$X
         y_train <- training_data$y
-        res_est <- getRes(X_train, y_train, clusters=est_clusters)
+        res_est <- getResPlant(X_train, y_train, clusters=est_clusters)
 
         test_inds <- setdiff(1:n, c(selec_inds, train_inds))
 
@@ -1174,7 +1174,7 @@ clustEstsPlant <- function(snps_mat, cor_cutoff){
     h <- stats::hclust(dist)
 
     clus_assignments <-  stats::cutree(h, h=est_clus_cutoff)
-    stopifnot(length(clus_assignments) == p)
+    stopifnot(length(clus_assignments) == n_snps)
 
     n_est_clusters <- length(unique(clus_assignments))
 
