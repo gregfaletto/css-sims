@@ -105,8 +105,8 @@ n_clus <- 200
 # Cutoff for absolute correlation for estimated clusters
 est_clus_cutoff <- 0.5
 n_test <- 10000
-# n_sims <- 2000
-n_sims <- 10
+n_sims <- 2000
+# n_sims <- 10
 # p <- 50
 p <- 100
 nblocks <- 1
@@ -266,6 +266,8 @@ if(run_new_sim){
         # , vary_along = ifelse(n_param_combs > 1, "p", NULL)
         # , vary_along = c("p", "beta_high")
         ) %>% simulate_from_model(nsim = n_sims)
+
+        save_simulation(gss_random_weighted_custom)
         
         gss_random_weighted_custom <- gss_random_weighted_custom %>%
         run_method(c(SS_SS_cssr # Stability selection (as proposed by Shah and
@@ -290,6 +292,8 @@ if(run_new_sim){
             # clusters
             , protolasso_cssr_est # Protolasso, estimated clusters
         )) 
+
+        save_simulation(gss_random_weighted_custom)
 
         gss_random_weighted_custom <- evaluate(gss_random_weighted_custom,
             list(cssr_mse))
