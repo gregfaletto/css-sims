@@ -4581,25 +4581,29 @@ stabsel_props <- new_method("stabsel_props", "Stability Selection",
 
 
 
-getBinMat <- function(output, meth, model_size){
-    stopifnot(length(output) == n_sims)
+getBinMat <- function(output, meth, model_size, num_sims, p_feat){
+    stopifnot(length(output) == num_sims)
 
-    ret <- matrix(0, n_sims, p)
+    ret <- matrix(0, num_sims, p_feat)
 
-    for(j in 1:n_sims){
+    for(j in 1:num_sims){
         output_j <- output[[j]]
         cssr_meth <- FALSE
         # Only need models of size model_size from method meth
-        if(meth %in% c("elastic_net", "lasso_random")){
+        if(meth %in% c("elastic_net", "elastic_net_plant", "lasso_random",
+            "lasso_random_plant")){
             feat_list <- output_j$lasso_selected
-        } else if(meth %in% c("clusRepLasso_cssr", "clusRepLasso_cssr_est")){
+        } else if(meth %in% c("clusRepLasso_cssr", "clusRepLasso_cssr_est",
+            "clusRepLasso_cssr_plant")){
             feat_list <- output_j$selected_clusts_list
-        } else if(meth %in% c("protolasso_cssr", "protolasso_cssr_est")){
+        } else if(meth %in% c("protolasso_cssr", "protolasso_cssr_est",
+            "protolasso_cssr_plant")){
             feat_list <- output_j$selected_sets
         } else if(meth %in% c("SS_CSS_avg_cssr", "SS_CSS_sparse_cssr",
             "SS_CSS_weighted_cssr", "SS_CSS_avg_cssr_est",
             "SS_CSS_sparse_cssr_est", "SS_CSS_weighted_cssr_est",
-            "SS_SS_cssr")){
+            "SS_SS_cssr", "SS_SS_cssr_plant", "SS_CSS_sparse_cssr_plant",
+            "SS_CSS_weighted_cssr_plant", "SS_CSS_avg_cssr_plant")){
             feat_list <- output_j$selected
             cssr_meth <- TRUE
         }
@@ -4611,16 +4615,17 @@ getBinMat <- function(output, meth, model_size){
                 if(is.list(feats_j)){
                     feats_j <- unlist(feats_j)
                 }
+                stopifnot(max(feats_j) <= p_feat)
                 ret[j, feats_j] <- 1
             }
         } else{
             if(length(feat_list) >= model_size){
                 feats_j <- feat_list[[model_size]]
                 if(!is.null(feats_j)){
+                    stopifnot(max(feats_j) <= p_feat)
                     ret[j, feats_j] <- 1
                 }
             }
-            
         }
     }
     return(ret)
@@ -4914,7 +4919,7 @@ genPlotDf <- function(completed_sim, alpha=0.05){
             }
 
             # NSB Stability
-            mat_i_k <- getBinMat(o_i, methods[i], k)
+            mat_i_k <- getBinMat(o_i, methods[i], k, num_sims=n_sims, p_feat=p)
             # Get stability metric--only works if there are at least 2 simulations
             stopifnot(n_sims > 1)
             stab_res_ik <- calcNSBStabNone(mat_i_k, calc_errors=TRUE)
@@ -4936,6 +4941,75 @@ genPlotDf <- function(completed_sim, alpha=0.05){
     results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
         MSELower=mses - margins, MSEUpper=mses + margins, NSBStability=nsbstabs,
         StabLower=nsb_lowers, StabUpper=nsb_uppers)
+
+    return(list(results_df=results_df, n_methods=n_methods))
+}
+
+genPlotDfPlant <- function(completed_sim){
+    print("getting evals...")
+    e <- evals(completed_sim)
+    print("done! converting to data.frame...")
+    t0 <- Sys.time()
+    edf <- as.data.frame(e)
+    print("done! time to convert to data.frame:")
+    print(Sys.time() - t0)
+    stopifnot("cssr_mse_plant" %in% colnames(edf))
+    print("Getting MSEs and stability metrics...")
+    t1 <- Sys.time()
+
+    methods <- unique(edf$Method)
+    n_methods <- length(methods)
+
+    model_sizes <- rep(1:p_max, times=n_methods)
+    methods_vec <- nameMap(rep(methods, each=p_max))
+    mses <- rep(as.numeric(NA), p_max*n_methods)
+    nsbstabs <- rep(as.numeric(NA), p_max*n_methods)
+
+    # Get MSEs and NSB stabilities
+    for(i in 1:n_methods){
+        
+        edf_i <- edf[edf$Method == methods[i], ]
+        # Should have a number of rows divisible by p_max
+        stopifnot(nrow(edf_i) %% p_max == 0)
+        stopifnot(n_draws*p_max == nrow(edf_i))
+        stopifnot(n_draws > 1)
+
+        meth_i_vec <- rep(as.numeric(NA), p_max)
+        o_i <- output(completed_sim, methods=methods[i])@out
+
+        for(k in 1:p_max){
+            # MSE
+            inds_k <- p_max*(0:(n_draws - 1)) + k
+            stopifnot(all(inds_k %in% 1:nrow(edf_i)))
+            stopifnot("cssr_mse_plant" %in% colnames(edf_i))
+            mses_ik <- edf_i[inds_k, "cssr_mse_plant"]
+
+            if(any(!is.na(mses_ik))){
+                # mse_mat[k, i] <- mean(mses_ik, na.rm=TRUE)
+                mses[(i - 1)*p_max + k] <- mean(mses_ik, na.rm=TRUE)
+            }
+
+            # NSB Stability
+            mat_i_k <- getBinMat(o_i, methods[i], k, num_sims=n_draws,
+                p_feat=n_snps)
+            # Get stability metric--only works if there are at least 2 simulations
+            stopifnot(n_draws > 1)
+            nsbstabs[(i - 1)*p_max + k] <- calcNSBStabNone(mat_i_k,
+                calc_errors=FALSE)
+        }
+        print(paste("Done with method", methods[i]))
+        print("Time in this step so far:")
+        t_i_end <- Sys.time()
+        print(t_i_end - t1)
+        print("Estimated time to go:")
+        print((n_methods - i)/i*(t_i_end - t1))
+    }
+
+    print("Done! time to get metrics:")
+    print(Sys.time() - t1)
+
+    results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec,
+        MSE=mses, NSBStability=nsbstabs)
 
     return(list(results_df=results_df, n_methods=n_methods))
 }
