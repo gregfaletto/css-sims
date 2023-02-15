@@ -642,8 +642,7 @@ SS_SS_random <- new_method("SS_SS_random",
 	settings = list(cutoff = 0.7, B=100)
 )
 
-SS_SS_cssr <- new_method("SS_SS_cssr",
-	"S&S SS (random X, custom SS function)",
+SS_SS_cssr <- new_method("SS_SS_cssr", "Stability Selection",
 	method = function(model, draw, B) {
 	# Original stability selection procedure
 	# Get lambda
@@ -693,8 +692,7 @@ getPlantSelecData <- function(selec_inds, response_name){
 	return(list(X=X_selec, y=y_selec))
 }
 
-SS_SS_cssr_plant <- new_method("SS_SS_cssr_plant",
-	"S&S SS (random X, custom SS function)",
+SS_SS_cssr_plant <- new_method("SS_SS_cssr_plant", "Stability Selection",
 	method = function(model, draw, B) {
 	# Original stability selection procedure
 	# Get X_selec, y_selec
@@ -886,7 +884,7 @@ SS_GSS_random <- new_method("SS_GSS_random",
 )
 
 SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
-	"S&S GSS (random X, custom SS function)",
+	"Sparse Cluster Stability Selection",
 	method = function(model, draw, B) {
 	# Sparse cluster stability selection
 
@@ -917,7 +915,7 @@ SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 )
 
 SS_CSS_sparse_cssr_est <- new_method("SS_CSS_sparse_cssr_est",
-	"S&S GSS (random X, custom SS function, est_clusts)",
+	"Sparse Cluster Stability Selection (estimated clusters)",
 	method = function(model, draw, B) {
 	# Sparse cluster stability selection
 
@@ -948,7 +946,7 @@ SS_CSS_sparse_cssr_est <- new_method("SS_CSS_sparse_cssr_est",
 )
 
 SS_CSS_sparse_cssr_plant <- new_method("SS_CSS_sparse_cssr_plant",
-	"S&S GSS (random X, custom SS function)",
+	"Sparse Cluster Stability Selection",
 	method = function(model, draw, B) {
 	# Sparse cluster stability selection
 
@@ -1121,7 +1119,7 @@ SS_GSS_random_avg <- new_method("SS_GSS_random_avg",
 
 
 SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
-	"S&S GSS (random X, averaging, custom SS function)",
+	"Weighted Average Cluster Stability Selection",
 	method = function(model, draw, B) {
 	# Weighted average cluster stability selection
 
@@ -1152,7 +1150,7 @@ SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 )
 
 SS_CSS_weighted_cssr_est <- new_method("SS_CSS_weighted_cssr_est",
-	"S&S GSS (random X, averaging, custom SS function, est_clusts)",
+	"Weighted Average Cluster Stability Selection (estimated clusters)",
 	method = function(model, draw, B) {
 	# Weighted average cluster stability selection
 
@@ -1183,7 +1181,7 @@ SS_CSS_weighted_cssr_est <- new_method("SS_CSS_weighted_cssr_est",
 )
 
 SS_CSS_weighted_cssr_plant <- new_method("SS_CSS_weighted_cssr_plant",
-	"S&S GSS (random X, averaging, custom SS function, est_clusts)",
+	"Weighted Average Cluster Stability Selection",
 	method = function(model, draw, B) {
 	# Weighted average cluster stability selection
 
@@ -1397,7 +1395,7 @@ SS_GSS_random_avg_unwt <- new_method("SS_GSS_random_avg_unwt",
 )
 
 SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
-	"S&S GSS (random X, unweighted averaging, custom SS function)",
+	"Simple Average Cluster Stability Selection",
 	method = function(model, draw, B) {
 	# Simple averaged cluster stability selection
 
@@ -1428,7 +1426,7 @@ SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
 )
 
 SS_CSS_avg_cssr_est <- new_method("SS_CSS_avg_cssr_est",
-	"S&S GSS (random X, unweighted averaging, custom SS function, clus_est)",
+	"Simple Average Cluster Stability Selection (estimated clusters)",
 	method = function(model, draw, B) {
 	# Simple averaged cluster stability selection
 
@@ -1459,7 +1457,7 @@ SS_CSS_avg_cssr_est <- new_method("SS_CSS_avg_cssr_est",
 )
 
 SS_CSS_avg_cssr_plant <- new_method("SS_CSS_avg_cssr_plant",
-	"S&S GSS (random X, unweighted averaging, custom SS function, est_clusts)",
+	"Simple Average Cluster Stability Selection",
 	method = function(model, draw, B) {
 	# Weighted average cluster stability selection
 
@@ -1600,7 +1598,7 @@ SS_GSS_random_avg_unwt_custom <- new_method("SS_GSS_random_avg_unwt_custom",
 
 
 clusRepLasso_cssr <- new_method("clusRepLasso_cssr",
-	"BRVZ method (random X, unweighted averaging)",
+	"Cluster Representative Lasso",
 	method = function(model, draw) {
 	
 	stopifnot(model$nblocks == 1)
@@ -1618,7 +1616,7 @@ clusRepLasso_cssr <- new_method("clusRepLasso_cssr",
 )
 
 clusRepLasso_cssr_est <- new_method("clusRepLasso_cssr_est",
-	"BRVZ method (random X, unweighted averaging, est_clusts)",
+	"Cluster Representative Lasso (estimated clusters)",
 	method = function(model, draw) {
 	
 	stopifnot(model$nblocks == 1)
@@ -1637,7 +1635,7 @@ clusRepLasso_cssr_est <- new_method("clusRepLasso_cssr_est",
 )
 
 clusRepLasso_cssr_plant <- new_method("clusRepLasso_cssr_plant",
-	"BRVZ method (random X, unweighted averaging, est_clusts)",
+	"Cluster Representative Lasso",
 	method = function(model, draw) {
 
 		# Get X_selec, y_selec
@@ -1719,8 +1717,8 @@ BRVZ_avg_unwt <- new_method("BRVZ_avg_unwt",
 	}
 )
 
-protolasso_cssr <- new_method("protolasso_cssr",
-	"Lasso (cluster prototype, Random design)", method=function(model, draw){
+protolasso_cssr <- new_method("protolasso_cssr", "Protolasso",
+	method=function(model, draw){
 
 	stopifnot(model$nblocks == 1)
 	stopifnot(model$sig_blocks == 1)
@@ -1737,7 +1735,7 @@ protolasso_cssr <- new_method("protolasso_cssr",
 )
 
 protolasso_cssr_est <- new_method("protolasso_cssr_est",
-	"Lasso (cluster prototype, Random design, est_clusts)",
+	"Protolasso (estimated clusters)",
 	method=function(model, draw){
 
 		stopifnot(model$nblocks == 1)
@@ -1756,7 +1754,7 @@ protolasso_cssr_est <- new_method("protolasso_cssr_est",
 )
 
 protolasso_cssr_plant <- new_method("protolasso_cssr_plant",
-	"Lasso (cluster prototype, Random design, est_clusts)",
+	"Protolasso",
 	method=function(model, draw){
 
 		# Get X_selec, y_selec
@@ -1957,7 +1955,7 @@ lasso <- new_method("lasso", "Lasso",
 	}
 )
 
-lasso_random <- new_method("lasso_random", "Lasso (Random design)",
+lasso_random <- new_method("lasso_random", "Lasso",
 	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
 	method = function(model, draw) {
 	fit <- glmnet(x=draw$X, y=draw$y, family="gaussian", alpha=1,
@@ -1977,7 +1975,7 @@ lasso_random <- new_method("lasso_random", "Lasso (Random design)",
 	}
 )
 
-lasso_random_plant <- new_method("lasso_random_plant", "Lasso (Random design)",
+lasso_random_plant <- new_method("lasso_random_plant", "Lasso",
 	# Currently with a large lambda.min.ratio to ensure smaller selected sets.
 	method = function(model, draw) {
 

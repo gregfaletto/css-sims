@@ -127,27 +127,32 @@ nameMap <- function(sys_name){
     # ret: A (vector of) character(s) with display friendly name(s)
     stopifnot(is.character(sys_name))
     ret <- sys_name
-    ret[sys_name %in%  c("lasso", "lasso_random")] <- "Lasso"
+    ret[sys_name %in%  c("lasso", "lasso_random", "lasso_random_plant")] <-
+        "Lasso"
     ret[sys_name %in%  c("lassoSS_phat", "SS_SS_random",
-        "SS_SS_random_custom", "SS_SS", "SS_SS_cssr")] <- "Stability Selection"
+        "SS_SS_random_custom", "SS_SS", "SS_SS_cssr", "SS_SS_cssr_plant")] <-
+        "Stability Selection"
     ret[sys_name %in%  c("lassoSS_phat_ideal", "SS_GSS_random",
-        "SS_GSS_random_custom", "SS_GSS", "SS_CSS_sparse_cssr")] <- "Sparse CSS"
+        "SS_GSS_random_custom", "SS_GSS", "SS_CSS_sparse_cssr",
+        "SS_CSS_sparse_cssr_plant")] <- "Sparse CSS"
     ret[sys_name %in%  c("SS_CSS_sparse_cssr_est")] <- "Sparse CSS (est. clusts)"
     ret[sys_name %in%  c("SS_GSS_random_avg", "SS_GSS_random_avg_custom",
-        "SS_GSS_avg", "SS_CSS_weighted_cssr")] <-
+        "SS_GSS_avg", "SS_CSS_weighted_cssr", "SS_CSS_weighted_cssr_plant")] <-
         "CSS"
         ret[sys_name %in%  c("SS_CSS_weighted_cssr_est")] <-
         "CSS (est. clusts)"
     ret[sys_name %in%  c("SS_GSS_random_avg_unwt", "SS_GSS_avg_unwt",
-        "SS_GSS_random_avg_unwt_custom", "SS_CSS_avg_cssr")] <- "Simple Averaged CSS"
+        "SS_GSS_random_avg_unwt_custom", "SS_CSS_avg_cssr",
+        "SS_CSS_avg_cssr_plant")] <- "Simple Averaged CSS"
     ret[sys_name %in%  c("SS_CSS_avg_cssr_est")] <- "Simple Averaged CSS (est. clusts)"
-    ret[sys_name %in%  c("BRVZ_avg_unwt", "clusRepLasso_cssr")] <-
-        "Cluster Rep. Lasso"
+    ret[sys_name %in%  c("BRVZ_avg_unwt", "clusRepLasso_cssr",
+        "clusRepLasso_cssr_plant")] <- "Cluster Rep. Lasso"
         ret[sys_name %in%  c("clusRepLasso_cssr_est")] <-
         "Cluster Rep. Lasso (est. clusts)"
-    ret[sys_name %in%  c("lasso_proto", "protolasso_cssr")] <- "Protolasso"
+    ret[sys_name %in%  c("lasso_proto", "protolasso_cssr",
+        "protolasso_cssr_plant")] <- "Protolasso"
     ret[sys_name %in%  c("protolasso_cssr_est")] <- "Protolasso (est. clusts)"
-    ret[sys_name %in%  c("elastic_net")] <- "Elastic Net"
+    ret[sys_name %in%  c("elastic_net", "elastic_net_plant")] <- "Elastic Net"
     return(ret)
 }
 
@@ -4989,6 +4994,7 @@ genPlotDfPlant <- function(completed_sim, coarseness){
 
     methods <- unique(edf$Method)
     n_methods <- length(methods)
+    stopifnot(nrow(edf) == n_methods*n_draws*p_max)
 
     n_batches <- p_max/coarseness
     stopifnot(n_batches == round(n_batches))
@@ -5013,6 +5019,8 @@ genPlotDfPlant <- function(completed_sim, coarseness){
         edf_i <- edf[edf$Method == methods[i], ]
         # Should have a number of rows divisible by p_max
         stopifnot(nrow(edf_i) %% p_max == 0)
+        # edf_i has p_max observations of MSEs for each draw for method[i] (one
+        # MSE for each model size on each draw)
         stopifnot(n_draws*p_max == nrow(edf_i))
         
         meth_i_vec <- rep(as.numeric(NA), n_batches)
@@ -5023,35 +5031,27 @@ genPlotDfPlant <- function(completed_sim, coarseness){
         for(k in 1:n_batches){
             # MSE
             model_sizes_k <- model_sizes[[k]]
+
             stopifnot(length(model_sizes_k) == coarseness)
             stopifnot(all(!is.na(model_sizes_k)))
-            # ret_df_ind_ik <- n_methods*(((k - 1) + 1):k)
+
             ret_df_ind_ik <- (i - 1)*n_batches + k
             mean_model_sizes[ret_df_ind_ik] <- mean(model_sizes_k)
+            # Gather all the indices corresponding to model sizes in
+            # model_sizes_k across all draws
             edf_inds_k <- integer()
             for(j in 1:coarseness){
-                # print("p_max*(0:(n_draws - 1)):")
-                # print(p_max*(0:(n_draws - 1)))
-                # print("model_sizes_k[j]:")
-                # print(model_sizes_k[j])
-                # print("p_max*(0:(n_draws - 1)) + model_sizes_k[j]:")
-                # print(p_max*(0:(n_draws - 1)) + model_sizes_k[j])
-                edf_inds_k <- c(edf_inds_k, p_max*(0:(n_draws - 1)) + model_sizes_k[j])
-                # print("edf_inds_k:")
-                # print(edf_inds_k)
+                edf_inds_k <- c(edf_inds_k, p_max*(0:(n_draws - 1)) +
+                    model_sizes_k[j])
             }
-
-            # print("max(edf_inds_k):")
-            # print(max(edf_inds_k))
-            # print("nrow(edf_i):")
-            # print(nrow(edf_i))
             
             stopifnot(all(edf_inds_k %in% 1:nrow(edf_i)))
             stopifnot("cssr_mse_plant" %in% colnames(edf_i))
             mses_ik <- edf_i[edf_inds_k, "cssr_mse_plant"]
 
-            if(any(!is.na(mses_ik))){
-                # mse_mat[k, i] <- mean(mses_ik, na.rm=TRUE)
+            # Only track mse for this group if there are at least MIN_COUNT
+            # observations
+            if(sum(!is.na(mses_ik)) >= MIN_COUNT){
                 mses[ret_df_ind_ik] <- mean(mses_ik, na.rm=TRUE)
             }
 
@@ -5061,10 +5061,11 @@ genPlotDfPlant <- function(completed_sim, coarseness){
             # Get stability metric--only works if there are at least 2 simulations
             stopifnot(n_draws > 1)
             if(all(!is.na(mat_i_k))){
-                nsbstabs[ret_df_ind_ik] <- calcNSBStabNone(mat_i_k,
-                    calc_errors=FALSE)
+                if(nrow(mat_i_k) >= MIN_COUNT){
+                    nsbstabs[ret_df_ind_ik] <- calcNSBStabNone(mat_i_k,
+                        calc_errors=FALSE)
+                }
             }
-            
         }
         print(paste("Done with method", methods[i]))
         print("Time in this step so far:")

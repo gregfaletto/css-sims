@@ -39,7 +39,7 @@ cor_cutoff <- 0.5
 
 # Number of draws to take
 # n_draws <- 100
-n_draws <- 20
+n_draws <- 60
 
 # Number of SNPs to use in data set
 n_snps <- 1000
@@ -56,6 +56,10 @@ stopifnot(p_max_plots <= p_max)
 # coarseness <- round(p_max/20)
 coarseness <- round(p_max_plots/20)
 coarseness_plots <- round(p_max_plots/20)
+
+# Minimum number of observations to take an average for MSE or calculate
+# stability metric
+MIN_COUNT <- 10
 
 # Verbose printing in loops?
 verbose <- FALSE
@@ -82,6 +86,8 @@ source("eval_functions.R")
 setwd(wd)
 
 if(load_data){
+
+	t_data <- Sys.time()
 
 	# Load SNP data
 	setwd(dir_hdf5)
@@ -195,9 +201,14 @@ if(load_data){
 	}
 
 	rownames(snps) <- paste("accession", rownames(snps), sep="")
+
+	print("Total time to load and process data:")
+	print(Sys.time() - t_data)
 }
 
 setwd(wd)
+
+t_max <- Sys.time()
 
 if(run_new_study){
 
@@ -257,6 +268,8 @@ if(run_new_study){
 	# Load needed files
 	plant_sim <- load_simulation("plant_sim")
 }
+
+parallel::stopCluster(cl)
 
 ### Generate figures
 
@@ -324,5 +337,15 @@ fig_4_supp_right <- createStabMSEPlot2(results_df, n_methods, plot_errors=FALSE)
 saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
     filename="real_data_mse_stab_supp.pdf")
 
-parallel::stopCluster(cl)
+print("Done with simulations! Total time:")
+print(Sys.time() - t_max)
+print("Time per simulation:")
+print((Sys.time() - t_max)/n_draws)
+
+
+
+
+
+
+
 
