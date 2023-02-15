@@ -105,8 +105,8 @@ n_clus <- 200
 # Cutoff for absolute correlation for estimated clusters
 est_clus_cutoff <- 0.5
 n_test <- 10000
-n_sims <- 2000
-# n_sims <- 10
+# n_sims <- 2000
+n_sims <- 10
 # p <- 50
 p <- 100
 nblocks <- 1
@@ -118,7 +118,7 @@ beta_high <- 1.5
 block_size <- 15
 n_strong_block_vars <- 5
 rho_high <- 0.9
-rho_low <- 0.5 
+rho_low <- 0.6
 var <- 1
 snr <- 3
 sigma_eps_sq <- NA
@@ -441,5 +441,6 @@ saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
     filename="sim_2_est_mse_stab_supp.pdf")
 
 print("Total time:")
-
 print(Sys.time() - t0)
+print("Time per simulation:")
+print((Sys.time() - t0)/n_sims)

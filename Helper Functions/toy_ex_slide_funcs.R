@@ -4965,9 +4965,9 @@ genPlotDf <- function(completed_sim, alpha=0.05){
         print(paste("Done with method", methods[i]))
         print("Time in this step so far:")
         t_i_end <- Sys.time()
-        print(t_i_end - t_1)
+        print(t_i_end - t1)
         print("Estimated time to go:")
-        print((n_methods - i)/i*(t_i_end - t_1))
+        print((n_methods - i)/i*(t_i_end - t1))
     }
 
     print("Done! time to get metrics:")
