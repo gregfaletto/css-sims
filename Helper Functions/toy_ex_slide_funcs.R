@@ -4581,15 +4581,18 @@ stabsel_props <- new_method("stabsel_props", "Stability Selection",
 
 
 
-getBinMat <- function(output, meth, model_size, num_sims, p_feat){
+getBinMat <- function(output, meth, model_sizes, num_sims, p_feat){
     stopifnot(length(output) == num_sims)
+    coarseness <- length(model_sizes)
+    n_batches <- p_feat/coarseness
+    stopifnot(n_batches == round(n_batches))
 
-    ret <- matrix(0, num_sims, p_feat)
+    ret <- matrix(as.integer(NA), num_sims*coarseness, p_feat)
 
     for(j in 1:num_sims){
         output_j <- output[[j]]
         cssr_meth <- FALSE
-        # Only need models of size model_size from method meth
+        # Only need models of size model_sizes from method meth
         if(meth %in% c("elastic_net", "elastic_net_plant", "lasso_random",
             "lasso_random_plant")){
             feat_list <- output_j$lasso_selected
@@ -4609,37 +4612,61 @@ getBinMat <- function(output, meth, model_size, num_sims, p_feat){
         }
 
         if(!cssr_meth){
-            feat_ind <- lengths(feat_list) == model_size
-            if(any(feat_ind)){
-                feats_j <- feat_list[[min(which(feat_ind))]]
-                if(is.list(feats_j)){
-                    feats_j <- unlist(feats_j)
+            for(k in 1:coarseness){
+                feat_ind_k <- lengths(feat_list) == model_sizes[k]
+                if(any(feat_ind_k)){
+
+                    feats_jk <- feat_list[[min(which(feat_ind_k))]]
+                    if(is.list(feats_jk)){
+                        feats_jk <- unlist(feats_jk)
+                    }
+
+                    stopifnot(max(feats_jk) <= p_feat)
+                    ret[(j - 1)*coarseness + k, ] <- 0
+                    ret[(j - 1)*coarseness + k, feats_jk] <- 1
                 }
-                stopifnot(max(feats_j) <= p_feat)
-                ret[j, feats_j] <- 1
             }
+            
         } else{
-            if(length(feat_list) >= model_size){
-                feats_j <- feat_list[[model_size]]
-                if(!is.null(feats_j)){
-                    stopifnot(max(feats_j) <= p_feat)
-                    ret[j, feats_j] <- 1
+            for(k in 1:coarseness){
+                if(length(feat_list) >= model_sizes[k]){
+                    feats_jk <- feat_list[[model_sizes[k]]]
+                    if(!is.null(feats_jk)){
+                        stopifnot(max(feats_jk) <= p_feat)
+                        ret[(j - 1)*coarseness + k, ] <- 0
+                        ret[(j - 1)*coarseness + k, feats_jk] <- 1
+                    }
                 }
             }
         }
     }
+    # print("str(ret):")
+    # print(str(ret))
+    ret <- ret[rowSums(is.na(ret)) != p_feat, ]
+    # ret <- ret[!is.na(ret)]
+    # print("str(ret):")
+    # print(str(ret))
+    stopifnot(all(!is.na(ret)))
+    if(!is.matrix(ret)){
+        # print("found that ret is not a matrix")
+        # print("str(ret):")
+        # print(str(ret))
+        # print("ret:")
+        # print(ret)
+    }
+    stopifnot(is.matrix(ret))
     return(ret)
 }
 
 
 
 createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
-    plot_errors=TRUE, subtitle=FALSE){
+    plot_errors=TRUE, subtitle=FALSE, max_model_size){
 
-    if((sig_blocks + k_unblocked) %% 2 == 0){
-        max_rank <- sig_blocks + k_unblocked
+    if(max_model_size %% 2 == 0){
+        max_rank <- max_model_size
     } else{
-        max_rank <- sig_blocks + k_unblocked + 1
+        max_rank <- max_model_size+ 1
     }
 
     plot <- ggplot(df_gg, aes(x=ModelSize, y=MSE, color=Method,
@@ -4945,7 +4972,7 @@ genPlotDf <- function(completed_sim, alpha=0.05){
     return(list(results_df=results_df, n_methods=n_methods))
 }
 
-genPlotDfPlant <- function(completed_sim){
+genPlotDfPlant <- function(completed_sim, coarseness){
     print("getting evals...")
     e <- evals(completed_sim)
     print("done! converting to data.frame...")
@@ -4960,10 +4987,22 @@ genPlotDfPlant <- function(completed_sim){
     methods <- unique(edf$Method)
     n_methods <- length(methods)
 
-    model_sizes <- rep(1:p_max, times=n_methods)
-    methods_vec <- nameMap(rep(methods, each=p_max))
-    mses <- rep(as.numeric(NA), p_max*n_methods)
-    nsbstabs <- rep(as.numeric(NA), p_max*n_methods)
+    n_batches <- p_max/coarseness
+    stopifnot(n_batches == round(n_batches))
+
+    # model_sizes <- rep(1:n_batches, times=n_methods)
+    methods_vec <- nameMap(rep(methods, each=n_batches))
+    mean_model_sizes <- rep(as.numeric(NA), n_batches*n_methods)
+    mses <- rep(as.numeric(NA), n_batches*n_methods)
+    nsbstabs <- rep(as.numeric(NA), n_batches*n_methods)
+
+    model_sizes <- list()
+    for(k in 1:n_batches){
+        model_sizes[[k]] <- ((k - 1)*coarseness + 1):(k*coarseness)
+    }
+
+    stopifnot(max(model_sizes[[k]]) <= p_max)
+    stopifnot(n_draws > 1)
 
     # Get MSEs and NSB stabilities
     for(i in 1:n_methods){
@@ -4972,29 +5011,51 @@ genPlotDfPlant <- function(completed_sim){
         # Should have a number of rows divisible by p_max
         stopifnot(nrow(edf_i) %% p_max == 0)
         stopifnot(n_draws*p_max == nrow(edf_i))
-        stopifnot(n_draws > 1)
-
-        meth_i_vec <- rep(as.numeric(NA), p_max)
+        
+        meth_i_vec <- rep(as.numeric(NA), n_batches)
         o_i <- output(completed_sim, methods=methods[i])@out
 
-        for(k in 1:p_max){
+        for(k in 1:n_batches){
             # MSE
-            inds_k <- p_max*(0:(n_draws - 1)) + k
+            model_sizes_k <- model_sizes[[k]]
+            # print("model_sizes_k :")
+            # print(model_sizes_k )
+            stopifnot(length(model_sizes_k) == coarseness)
+            stopifnot(all(!is.na(model_sizes_k )))
+            mean_model_sizes[((k - 1)*n_methods + 1):(k*n_methods)] <- mean(model_sizes_k)
+            inds_k <- integer()
+            for(j in 1:coarseness){
+                # print("p_max*(0:(n_draws - 1)):")
+                # print(p_max*(0:(n_draws - 1)))
+                # print("model_sizes_k[j]:")
+                # print(model_sizes_k[j])
+                # print("p_max*(0:(n_draws - 1)) + model_sizes_k[j]:")
+                # print(p_max*(0:(n_draws - 1)) + model_sizes_k[j])
+                inds_k <- c(inds_k, p_max*(0:(n_draws - 1)) + model_sizes_k[j])
+                # print("inds_k:")
+                # print(inds_k)
+            }
+
+            # print("max(inds_k):")
+            # print(max(inds_k))
+            # print("nrow(edf_i):")
+            # print(nrow(edf_i))
+            
             stopifnot(all(inds_k %in% 1:nrow(edf_i)))
             stopifnot("cssr_mse_plant" %in% colnames(edf_i))
             mses_ik <- edf_i[inds_k, "cssr_mse_plant"]
 
             if(any(!is.na(mses_ik))){
                 # mse_mat[k, i] <- mean(mses_ik, na.rm=TRUE)
-                mses[(i - 1)*p_max + k] <- mean(mses_ik, na.rm=TRUE)
+                mses[(i - 1)*n_batches + k] <- mean(mses_ik, na.rm=TRUE)
             }
 
             # NSB Stability
-            mat_i_k <- getBinMat(o_i, methods[i], k, num_sims=n_draws,
-                p_feat=n_snps)
+            mat_i_k <- getBinMat(o_i, methods[i], model_sizes_k,
+                num_sims=n_draws, p_feat=n_snps)
             # Get stability metric--only works if there are at least 2 simulations
             stopifnot(n_draws > 1)
-            nsbstabs[(i - 1)*p_max + k] <- calcNSBStabNone(mat_i_k,
+            nsbstabs[(i - 1)*n_batches + k] <- calcNSBStabNone(mat_i_k,
                 calc_errors=FALSE)
         }
         print(paste("Done with method", methods[i]))
@@ -5008,7 +5069,7 @@ genPlotDfPlant <- function(completed_sim){
     print("Done! time to get metrics:")
     print(Sys.time() - t1)
 
-    results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec,
+    results_df <- data.frame(ModelSize=mean_model_sizes, Method=methods_vec,
         MSE=mses, NSBStability=nsbstabs)
 
     return(list(results_df=results_df, n_methods=n_methods))

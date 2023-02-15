@@ -337,7 +337,8 @@ saveFigure2(subdir="figures", plot=prop_fig, size="slide",
 ### Figure 2
 
 fig_2_right <- createLossesPlot3(results_df[results_df$Method %in%
-    nameMap(c("SS_SS_cssr", "lasso_random")), ], 2)
+    nameMap(c("SS_SS_cssr", "lasso_random")), ], 2, max_model_size=sig_blocks +
+    k_unblocked)
 
 # 2. Save the legend
 #+++++++++++++++++++++++
@@ -369,7 +370,8 @@ saveFigure2(subdir="figures", plot=fig_2, size="mlarge", filename="fig_2.pdf")
 
 fig_3_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ],
-    n_methods - 2 - length(est_cluster_meths))
+    n_methods - 2 - length(est_cluster_meths), max_model_size=sig_blocks +
+    k_unblocked)
 
 fig_3_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ])
@@ -406,7 +408,8 @@ saveFigure2(subdir="figures", plot=fig_3, size="large", filename="fig_3_known.pd
 ### Versions of Figure 3 plots with all methods (for supplement)
 
 fig_3_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
-    nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths))
+    nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths),
+    max_model_size=sig_blocks + k_unblocked)
 
 saveFigure2(subdir="figures", plot=fig_3_supp_left, size="xmlarge",
     filename="sim_1_known_mse_supp.pdf")
@@ -431,7 +434,8 @@ saveFigure2(subdir="figures", plot=fig_3_supp_right, size="xmlarge",
 fig_3_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est",
         "SS_CSS_avg_cssr_est", known_cluster_meths))), ],
-    n_methods - 2 - length(known_cluster_meths))
+    n_methods - 2 - length(known_cluster_meths), max_model_size=sig_blocks +
+    k_unblocked)
 
 fig_3_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est", known_cluster_meths))), ])
@@ -468,7 +472,8 @@ saveFigure2(subdir="figures", plot=fig_3, size="large", filename="fig_3_est.pdf"
 ### Versions of Figure 3 plots with all methods (for supplement)
 
 fig_3_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
-    nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths))
+    nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths),
+    max_model_size=sig_blocks + k_unblocked)
 
 saveFigure2(subdir="figures", plot=fig_3_supp_left, size="xmlarge",
     filename="sim_1_est_mse_supp.pdf")
