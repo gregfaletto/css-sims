@@ -8,11 +8,13 @@ library(Metrics)
 
 # Directory where stabsel_copy.R is storeed
 dir_stabsel <- "/Users/gregfaletto/Google Drive/Data Science/R/USC/Stability Selection/toy_example/New method"
+# dir_stabsel <- "/Users/gregfaletto/My Drive/Data Science/R/USC/Stability Selection/toy_example/New method"
 
-wd <- getwd()
-setwd(dir_stabsel)
-source(file="stabsel_copy.R")
-setwd(wd)
+
+# wd <- getwd()
+# setwd(dir_stabsel)
+# source(file="stabsel_copy.R")
+# setwd(wd)
 
 genResponse <- function(data, snr, beta_high, latent_feat, cluster_feats,
     unclustered_feats=NA){

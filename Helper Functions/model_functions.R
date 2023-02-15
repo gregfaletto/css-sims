@@ -1173,7 +1173,7 @@ clustEstsPlant <- function(snps_mat, cor_cutoff){
     dist <- stats::as.dist(1 - abs(cor_mat))
     h <- stats::hclust(dist)
 
-    clus_assignments <-  stats::cutree(h, h=est_clus_cutoff)
+    clus_assignments <-  stats::cutree(h, h=cor_cutoff)
     stopifnot(length(clus_assignments) == n_snps)
 
     n_est_clusters <- length(unique(clus_assignments))
