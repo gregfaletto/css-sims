@@ -325,8 +325,14 @@ cssr_mse_metric_func <- function(out, max_model_size){
      # method="simple_avg" # simple averaged cluster stability selection
 
      n_sets <- length(out$selected)
-     stopifnot(n_sets <= max_model_size)
      mses <- rep(as.numeric(NA), max_model_size)
+     
+     if(n_sets == 0){
+          return(mses)
+     }
+
+     stopifnot(n_sets <= max_model_size)
+     stopifnot(length(out$selected_clusts) >= n_sets)
      stopifnot("selected_clusts" %in% names(out))
      for(i in 1:n_sets){
           # Check if a selected set of size i was defined to exist--if not, skip
@@ -354,9 +360,16 @@ cssr_mse_metric_func_plant <- function(out, model, X_train, y_train, X_test,
      
 
      n_sets <- length(out$selected)
-     stopifnot(n_sets <= model$max_model_size)
      mses <- rep(as.numeric(NA), model$max_model_size)
+
+     if(n_sets == 0){
+          return(mses)
+     }
+
+     stopifnot(n_sets <= model$max_model_size)
+     stopifnot(length(out$selected_clusts) >= n_sets)
      stopifnot("selected_clusts" %in% names(out))
+     
      for(i in 1:n_sets){
           # Check if a selected set of size i was defined to exist--if not, skip
           # this model size

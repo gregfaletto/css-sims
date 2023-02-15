@@ -4861,8 +4861,16 @@ saveFigure2 <- function(subdir, plot, size="large", filename){
 }
 
 genPlotDf <- function(completed_sim, alpha=0.05){
+    print("getting evals...")
     e <- evals(completed_sim)
+    print("done! converting to data.frame...")
+    t0 <- Sys.time()
     edf <- as.data.frame(e)
+    print("done! time to convert to data.frame:")
+    print(Sys.time() - t0)
+    stopifnot("cssr_mse" %in% colnames(edf))
+    print("Getting MSEs and stability metrics...")
+    t1 <- Sys.time()
 
     methods <- unique(edf$Method)
     n_methods <- length(methods)
@@ -4877,6 +4885,7 @@ genPlotDf <- function(completed_sim, alpha=0.05){
 
     # Get MSEs and NSB stabilities
     for(i in 1:n_methods){
+        
         edf_i <- edf[edf$Method == methods[i], ]
         # Should have a number of rows divisible by sig_blocks + k_unblocked
         stopifnot(nrow(edf_i) %% (sig_blocks + k_unblocked) == 0)
@@ -4890,7 +4899,8 @@ genPlotDf <- function(completed_sim, alpha=0.05){
             # MSE
             inds_k <- (sig_blocks + k_unblocked)*(0:(n_sims - 1)) + k
             stopifnot(all(inds_k %in% 1:nrow(edf_i)))
-            mses_ik <- edf_i[inds_k, "MSE"]
+            stopifnot("cssr_mse" %in% colnames(edf_i))
+            mses_ik <- edf_i[inds_k, "cssr_mse"]
 
             if(any(!is.na(mses_ik))){
                 # mse_mat[k, i] <- mean(mses_ik, na.rm=TRUE)
@@ -4912,7 +4922,16 @@ genPlotDf <- function(completed_sim, alpha=0.05){
             nsb_lowers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[2]
             nsb_uppers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[3]
         }
+        print(paste("Done with method", methods[i]))
+        print("Time in this step so far:")
+        t_i_end <- Sys.time()
+        print(t_i_end - t_1)
+        print("Estimated time to go:")
+        print((n_methods - i)/i*(t_i_end - t_1))
     }
+
+    print("Done! time to get metrics:")
+    print(Sys.time() - t1)
 
     results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
         MSELower=mses - margins, MSEUpper=mses + margins, NSBStability=nsbstabs,
