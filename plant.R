@@ -12,6 +12,7 @@ library(ggcorrplot)
 
 library(gridExtra)
 library(cowplot)
+library(simulator)
 
 cl <- parallel::makeForkCluster(nnodes=detectCores())
 doParallel::registerDoParallel(cl)
@@ -38,7 +39,7 @@ cor_cutoff <- 0.5
 
 # Number of draws to take
 # n_draws <- 100
-n_draws <- 2
+n_draws <- 20
 
 # Number of SNPs to use in data set
 n_snps <- 1000
@@ -61,8 +62,10 @@ verbose <- FALSE
 # Directory where simFunctions.R is stored
 wd <- getwd()
 dir_funcs <- paste(sim_dir, "Helper Functions", sep="/")
-dir_resp <- "/Users/gregfaletto/Google Drive/Data Science/LaTeX/Paper skeleton 2020/Real data examples/GWAS/AraGWAS/database/12"
-dir_hdf5 <- "/Users/gregfaletto/Google Drive/Data Science/Python/gwas"
+# dir_resp <- "/Users/gregfaletto/Google Drive/Data Science/LaTeX/Paper skeleton 2020/Real data examples/GWAS/AraGWAS/database/12"
+# dir_hdf5 <- "/Users/gregfaletto/Google Drive/Data Science/Python/gwas"
+dir_resp <- "/Users/gregfaletto/My Drive/Data Science/LaTeX/Paper skeleton 2020/Real data examples/GWAS/AraGWAS/database/12"
+dir_hdf5 <- "/Users/gregfaletto/My Drive/Data Science/Python/gwas"
 
 # SNPs file name
 snps_file <- "snps50000.csv"
@@ -186,8 +189,8 @@ if(load_data){
 	data_plant <- left_join(data_plant, pheno, by="accession_id")
 	data_plant <- data_plant[, colnames(data_plant) != "accession_id"]
 
-	if(any(is.na(data))){
-		stop("any(is.na(data))")
+	if(any(is.na(data_plant))){
+		stop("any(is.na(data_plant))")
 	}
 
 	rownames(snps) <- paste("accession", rownames(snps), sep="")
@@ -197,11 +200,13 @@ setwd(wd)
 
 if(run_new_study){
 
+	t1 <- Sys.time()
+
 	response_name <- "log_FT10"
 
 	if(!(response_name %in% colnames(data_plant))){
 		if(!("FT10" %in% colnames(data_plant))){
-		stop("!(FT10 %in% colnames(data))")
+		stop("!(FT10 %in% colnames(data_plant))")
 	}
 		# Change response to log
 		data_plant$FT10 <- log(data_plant$FT10)
@@ -242,11 +247,142 @@ if(run_new_study){
 
     save_simulation(plant_sim)
 
+    print("Total time for simulation:")
+    print(Sys.time() - t1)
+    print("Time per simulation:")
+    print((Sys.time() - t1)/n_draws)
+
 } else{
 	# Load needed files
 	plant_sim <- load_simulation("plant_sim")
 }
 
-parallel::stopCluster(cl)
+### Generate figures
 
+results <- genPlotDf(gss_random_weighted_custom)
+
+results_df <- results$results_df
+
+n_methods <- results$n_methods
+
+### Figure 4 (previously Figure 5) (known clusters)
+
+fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ],
+    n_methods - 2 - length(est_cluster_meths))
+
+fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ])
+
+fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ],
+    n_methods - 2 - length(est_cluster_meths))
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+legend <- get_legend(fig_4_left + theme(legend.direction="horizontal"))
+
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+fig_4_left <- fig_4_left + theme(legend.position="none")
+
+fig_4_mid <- fig_4_mid + theme(legend.position="none")
+
+fig_4_right <- fig_4_right + theme(legend.position="none")
+
+# 4. Arrange ggplot2 graphs with a specific width
+
+fig_4 <- grid.arrange(fig_4_left, fig_4_mid, fig_4_right, legend, ncol=3,
+    nrow = 2, layout_matrix = rbind(c(1, 2, 3), c(4, 4, 4)),
+    widths = c(1.8, 1.8, 1.8), heights = c(2.5, 0.2))
+
+fig_4 <- cowplot::ggdraw(fig_4) +
+    theme(plot.background = element_rect(fill="white", color = NA))
+
+print(fig_4)
+
+saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4_known.pdf")
+
+### Versions of Figure 4 plots with all methods (for supplement)
+
+fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths))
+
+saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
+    filename="sim_2_known_mse_supp.pdf")
+
+fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(est_cluster_meths)), ])
+
+saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
+    filename="sim_2_known_stab_supp.pdf")
+
+fig_4_supp_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths))
+
+saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
+    filename="sim_2_known_mse_stab_supp.pdf")
+
+
+
+### Figure 4 (previously Figure 5) (estimated clusters)
+
+fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est",
+        known_cluster_meths))), ], n_methods - 2 - length(known_cluster_meths))
+
+fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est",
+        known_cluster_meths))), ])
+
+fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est",
+        known_cluster_meths))), ], n_methods - 2 - length(known_cluster_meths))
+
+# 2. Save the legend
+#+++++++++++++++++++++++
+legend <- get_legend(fig_4_left + theme(legend.direction="horizontal"))
+
+# 3. Remove the legend from the box plot
+#+++++++++++++++++++++++
+fig_4_left <- fig_4_left + theme(legend.position="none")
+
+fig_4_mid <- fig_4_mid + theme(legend.position="none")
+
+fig_4_right <- fig_4_right + theme(legend.position="none")
+
+# 4. Arrange ggplot2 graphs with a specific width
+
+fig_4 <- grid.arrange(fig_4_left, fig_4_mid, fig_4_right, legend, ncol=3,
+    nrow = 2, layout_matrix = rbind(c(1, 2, 3), c(4, 4, 4)),
+    widths = c(1.8, 1.8, 1.8), heights = c(2.5, 0.2))
+
+fig_4 <- cowplot::ggdraw(fig_4) +
+    theme(plot.background = element_rect(fill="white", color = NA))
+
+print(fig_4)
+
+saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4_est.pdf")
+
+### Versions of Figure 4 plots with all methods (for supplement)
+
+fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
+    nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths))
+
+saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
+    filename="sim_2_est_mse_supp.pdf")
+
+fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
+    nameMap(known_cluster_meths)), ])
+
+saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
+    filename="sim_2_est_stab_supp.pdf")
+
+fig_4_supp_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
+    nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths))
+
+saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
+    filename="sim_2_est_mse_stab_supp.pdf")
+
+parallel::stopCluster(cl)
 
