@@ -53,7 +53,8 @@ p_max_plots <- round(n_snps/10)
 stopifnot(p_max_plots <= p_max)
 
 # Coarseness for stability plots (how many model sizes to include in one point?)
-coarseness <- round(p_max/20)
+# coarseness <- round(p_max/20)
+coarseness <- round(p_max_plots/20)
 coarseness_plots <- round(p_max_plots/20)
 
 # Verbose printing in loops?

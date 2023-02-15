@@ -4640,22 +4640,22 @@ getBinMat <- function(output, meth, model_sizes, num_sims, p_feat){
             }
         }
     }
-    # print("str(ret):")
-    # print(str(ret))
-    ret <- ret[rowSums(is.na(ret)) != p_feat, ]
-    # ret <- ret[!is.na(ret)]
-    # print("str(ret):")
-    # print(str(ret))
-    stopifnot(all(!is.na(ret)))
-    if(!is.matrix(ret)){
-        # print("found that ret is not a matrix")
-        # print("str(ret):")
-        # print(str(ret))
-        # print("ret:")
-        # print(ret)
+    # Need at least 2 rows for stability measure to be defined
+    if(sum(rowSums(is.na(ret)) != p_feat) >= 2){
+        ret <- ret[rowSums(is.na(ret)) != p_feat, ]
+        stopifnot(all(!is.na(ret)))
+        # if(!is.matrix(ret)){
+            # print("found that ret is not a matrix")
+            # print("str(ret):")
+            # print(str(ret))
+            # print("ret:")
+            # print(ret)
+        # }
+        stopifnot(is.matrix(ret))
+        return(ret)
     }
-    stopifnot(is.matrix(ret))
-    return(ret)
+    return(NA)
+    
 }
 
 
@@ -4929,30 +4929,33 @@ genPlotDf <- function(completed_sim, alpha=0.05){
 
         for(k in 1:(sig_blocks + k_unblocked)){
             # MSE
-            inds_k <- (sig_blocks + k_unblocked)*(0:(n_sims - 1)) + k
-            stopifnot(all(inds_k %in% 1:nrow(edf_i)))
+            ret_df_ind_ik <- (i - 1)*(sig_blocks + k_unblocked) + k
+            edf_inds_k <- (sig_blocks + k_unblocked)*(0:(n_sims - 1)) + k
+            stopifnot(all(edf_inds_k %in% 1:nrow(edf_i)))
             stopifnot("cssr_mse" %in% colnames(edf_i))
-            mses_ik <- edf_i[inds_k, "cssr_mse"]
+            mses_ik <- edf_i[edf_inds_k, "cssr_mse"]
 
             if(any(!is.na(mses_ik))){
                 # mse_mat[k, i] <- mean(mses_ik, na.rm=TRUE)
-                mses[(i - 1)*(sig_blocks + k_unblocked) + k] <- mean(mses_ik,
+                mses[ret_df_ind_ik] <- mean(mses_ik,
                     na.rm=TRUE)
                 # margin_mat[k, i] <- qnorm(1 - alpha/2)*sd(mses_ik, na.rm=TRUE)/
                 #     sqrt(sum(!is.na(mses_ik)))
-                margins[(i - 1)*(sig_blocks + k_unblocked) + k] <-
-                    qnorm(1 - alpha/2)*sd(mses_ik, na.rm=TRUE)/
-                    sqrt(sum(!is.na(mses_ik)))
+                margins[ret_df_ind_ik] <- qnorm(1 - alpha/2)*sd(mses_ik,
+                    na.rm=TRUE)/ sqrt(sum(!is.na(mses_ik)))
             }
 
             # NSB Stability
             mat_i_k <- getBinMat(o_i, methods[i], k, num_sims=n_sims, p_feat=p)
             # Get stability metric--only works if there are at least 2 simulations
             stopifnot(n_sims > 1)
-            stab_res_ik <- calcNSBStabNone(mat_i_k, calc_errors=TRUE)
-            nsbstabs[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[1]
-            nsb_lowers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[2]
-            nsb_uppers[(i - 1)*(sig_blocks + k_unblocked) + k] <- stab_res_ik[3]
+            if(all(!is.na(mat_i_k))){
+                stab_res_ik <- calcNSBStabNone(mat_i_k, calc_errors=TRUE)
+                nsbstabs[ret_df_ind_ik] <- stab_res_ik[1]
+                nsb_lowers[ret_df_ind_ik] <- stab_res_ik[2]
+                nsb_uppers[ret_df_ind_ik] <- stab_res_ik[3]
+            }
+            
         }
         print(paste("Done with method", methods[i]))
         print("Time in this step so far:")
@@ -5015,15 +5018,17 @@ genPlotDfPlant <- function(completed_sim, coarseness){
         meth_i_vec <- rep(as.numeric(NA), n_batches)
         o_i <- output(completed_sim, methods=methods[i])@out
 
+        stopifnot(length(model_sizes) == n_batches)
+
         for(k in 1:n_batches){
             # MSE
             model_sizes_k <- model_sizes[[k]]
-            # print("model_sizes_k :")
-            # print(model_sizes_k )
             stopifnot(length(model_sizes_k) == coarseness)
-            stopifnot(all(!is.na(model_sizes_k )))
-            mean_model_sizes[((k - 1)*n_methods + 1):(k*n_methods)] <- mean(model_sizes_k)
-            inds_k <- integer()
+            stopifnot(all(!is.na(model_sizes_k)))
+            # ret_df_ind_ik <- n_methods*(((k - 1) + 1):k)
+            ret_df_ind_ik <- (i - 1)*n_batches + k
+            mean_model_sizes[ret_df_ind_ik] <- mean(model_sizes_k)
+            edf_inds_k <- integer()
             for(j in 1:coarseness){
                 # print("p_max*(0:(n_draws - 1)):")
                 # print(p_max*(0:(n_draws - 1)))
@@ -5031,23 +5036,23 @@ genPlotDfPlant <- function(completed_sim, coarseness){
                 # print(model_sizes_k[j])
                 # print("p_max*(0:(n_draws - 1)) + model_sizes_k[j]:")
                 # print(p_max*(0:(n_draws - 1)) + model_sizes_k[j])
-                inds_k <- c(inds_k, p_max*(0:(n_draws - 1)) + model_sizes_k[j])
-                # print("inds_k:")
-                # print(inds_k)
+                edf_inds_k <- c(edf_inds_k, p_max*(0:(n_draws - 1)) + model_sizes_k[j])
+                # print("edf_inds_k:")
+                # print(edf_inds_k)
             }
 
-            # print("max(inds_k):")
-            # print(max(inds_k))
+            # print("max(edf_inds_k):")
+            # print(max(edf_inds_k))
             # print("nrow(edf_i):")
             # print(nrow(edf_i))
             
-            stopifnot(all(inds_k %in% 1:nrow(edf_i)))
+            stopifnot(all(edf_inds_k %in% 1:nrow(edf_i)))
             stopifnot("cssr_mse_plant" %in% colnames(edf_i))
-            mses_ik <- edf_i[inds_k, "cssr_mse_plant"]
+            mses_ik <- edf_i[edf_inds_k, "cssr_mse_plant"]
 
             if(any(!is.na(mses_ik))){
                 # mse_mat[k, i] <- mean(mses_ik, na.rm=TRUE)
-                mses[(i - 1)*n_batches + k] <- mean(mses_ik, na.rm=TRUE)
+                mses[ret_df_ind_ik] <- mean(mses_ik, na.rm=TRUE)
             }
 
             # NSB Stability
@@ -5055,8 +5060,11 @@ genPlotDfPlant <- function(completed_sim, coarseness){
                 num_sims=n_draws, p_feat=n_snps)
             # Get stability metric--only works if there are at least 2 simulations
             stopifnot(n_draws > 1)
-            nsbstabs[(i - 1)*n_batches + k] <- calcNSBStabNone(mat_i_k,
-                calc_errors=FALSE)
+            if(all(!is.na(mat_i_k))){
+                nsbstabs[ret_df_ind_ik] <- calcNSBStabNone(mat_i_k,
+                    calc_errors=FALSE)
+            }
+            
         }
         print(paste("Done with method", methods[i]))
         print("Time in this step so far:")
