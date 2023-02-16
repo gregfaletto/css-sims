@@ -106,7 +106,7 @@ n_clus <- 200
 est_clus_cutoff <- 0.5
 n_test <- 10000
 n_sims <- 1000
-# n_sims <- 10
+# n_sims <- 5
 # p <- 50
 p <- 100
 nblocks <- 1

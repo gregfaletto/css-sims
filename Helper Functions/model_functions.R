@@ -1117,14 +1117,9 @@ make_blocked_lin_mod4_ran_weight <- function(n, n_clus, n_test, p, k_unblocked,
 sim_5_extra <- function(n, n_clus, n_test, p, k_unblocked, 
     beta_low, beta_high, nblocks=1, sig_blocks=1, block_size, est_clus_cutoff,
     rho_high, rho_low, var, snr=NA, sigma_eps_sq=NA) {
-    # Same as make_sparse_blocked_linear_model4_random, but makes only
-    # n_strong_block_vars have a high correlation with latent signal; remaining
-    # block_size - n_strong_block_vars variables have low correlation.
+
     if(is.na(snr) & is.na(sigma_eps_sq)){
         stop("Must specify one of snr or sigma_eps_sq")
-    }
-    if(n_strong_block_vars < 0 | n_strong_block_vars > block_size){
-        stop("n_strong_block_vars < 0 | n_strong_block_vars > 0 block_size")
     }
 
     if(rho_low >= rho_high){
@@ -1133,15 +1128,6 @@ sim_5_extra <- function(n, n_clus, n_test, p, k_unblocked,
 
     # Make sure p is large enough
     stopifnot(p >= nblocks*block_size + k_unblocked)
-
-    # Sigma <- make_covariance_matrix_weighted(p + sig_blocks, nblocks,
-    #     block_size + sig_blocks, n_strong_block_vars + sig_blocks, rho_high,
-    #     rho_low, var)
-
-    # stopifnot(nrow(Sigma) == p + sig_blocks & ncol(Sigma) == p + sig_blocks)
-
-    # coefs <- make_coefficients4_ranking2(p + sig_blocks, k_unblocked, beta_low,
-    #     beta_high, nblocks, sig_blocks, block_size + 1)
     
     my_model <- new_model(name = "sim_5_extra", 
                 label = sprintf("Lin model (weight avg, corr blocks) (n= %s, p= %s, k_unblocked= %s, rho_high= %s)",
@@ -1155,11 +1141,6 @@ sim_5_extra <- function(n, n_clus, n_test, p, k_unblocked,
                     rho_low = rho_low, var = var,
                     snr = snr,
                     sigma_eps_sq = sigma_eps_sq
-                    # Sigma = Sigma,
-                    # beta = coefs$beta,
-                    # blocked_dgp_vars = coefs$blocked_dgp_vars,
-                    # sig_unblocked_vars = coefs$sig_unblocked_vars,
-                    # insig_blocked_vars = coefs$insig_blocked_vars
                     )
                     , simulate = sim_5_extra_sim_func
     )
