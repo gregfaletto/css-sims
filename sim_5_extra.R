@@ -115,10 +115,9 @@ k_unblocked <- 10
 beta_low <- 1
 # beta_high <- 2
 beta_high <- 1.5
-block_size <- 15
-n_strong_block_vars <- 5
-rho_high <- 0.9
-rho_low <- 0.6
+block_size <- 10
+rho_high <- 1
+rho_low <- 0.5
 var <- 1
 snr <- 3
 sigma_eps_sq <- NA
@@ -213,9 +212,9 @@ if(run_new_sim){
     set.seed(seed1)
 
     if(method=="MB"){
-        gss_random_weighted_custom <- new_simulation("gss_random_weighted_custom",
+        gss_random_weighted_random <- new_simulation("gss_random_weighted_random",
         "GSS (Random Design, Weighted Averaging)") %>%
-        generate_model(make_model=make_blocked_lin_mod4_ran_weight,
+        generate_model(make_model=sim_5_extra,
         n = n_model,
         n_test = n_test,
         p = p,
@@ -227,7 +226,6 @@ if(run_new_sim){
         nblocks = nblocks,
         sig_blocks = sig_blocks,
         block_size = block_size,
-        n_strong_block_vars = n_strong_block_vars,
         rho_high = rho_high,
         rho_low = rho_low,
         var = var,
@@ -244,9 +242,9 @@ if(run_new_sim){
             # , lassoSS_random
         )) %>% evaluate(list(phat, labels))
     } else{
-        gss_random_weighted_custom <- new_simulation("gss_random_weighted_custom",
+        gss_random_weighted_random <- new_simulation("gss_random_weighted_random",
         "GSS (Random Design, Weighted Averaging)") %>%
-        generate_model(make_model=make_blocked_lin_mod4_ran_weight,
+        generate_model(make_model=sim_5_extra,
         n = n_model,
         n_clus = n_clus,
         n_test = n_test,
@@ -258,7 +256,6 @@ if(run_new_sim){
         nblocks = nblocks,
         sig_blocks = sig_blocks,
         block_size = block_size,
-        n_strong_block_vars = n_strong_block_vars,
         rho_high = rho_high,
         rho_low = rho_low,
         var = var,
@@ -267,9 +264,9 @@ if(run_new_sim){
         # , vary_along = c("p", "beta_high")
         ) %>% simulate_from_model(nsim = n_sims)
 
-        save_simulation(gss_random_weighted_custom)
+        save_simulation(gss_random_weighted_random)
         
-        gss_random_weighted_custom <- gss_random_weighted_custom %>%
+        gss_random_weighted_random <- gss_random_weighted_random %>%
         run_method(c(SS_SS_cssr # Stability selection (as proposed by Shah and
             # Samworth 2012)
             , SS_CSS_sparse_cssr # Sparse cluster stability selection
@@ -293,25 +290,25 @@ if(run_new_sim){
             , protolasso_cssr_est # Protolasso, estimated clusters
         )) 
 
-        save_simulation(gss_random_weighted_custom)
+        save_simulation(gss_random_weighted_random)
 
-        gss_random_weighted_custom <- evaluate(gss_random_weighted_custom,
+        gss_random_weighted_random <- evaluate(gss_random_weighted_random,
             list(cssr_mse))
     }
 
 
-    save_simulation(gss_random_weighted_custom)
+    save_simulation(gss_random_weighted_random)
     
 
 } else{
     print("loading simulation...")
-    gss_random_weighted_custom <- load_simulation("gss_random_weighted_custom")
+    gss_random_weighted_random <- load_simulation("gss_random_weighted_random")
     print("simulation laoded!")
 }
 
 ### Generate figures
 
-results <- genPlotDf(gss_random_weighted_custom)
+results <- genPlotDf(gss_random_weighted_random)
 
 results_df <- results$results_df
 
@@ -354,7 +351,7 @@ fig_4 <- cowplot::ggdraw(fig_4) +
 
 print(fig_4)
 
-saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4_known.pdf")
+saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_7_known.pdf")
 
 ### Versions of Figure 4 plots with all methods (for supplement)
 
@@ -363,19 +360,19 @@ fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     max_model_size=sig_blocks + k_unblocked)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
-    filename="sim_2_known_mse_supp.pdf")
+    filename="sim_3_known_mse_supp.pdf")
 
 fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(est_cluster_meths)), ])
 
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
-    filename="sim_2_known_stab_supp.pdf")
+    filename="sim_3_known_stab_supp.pdf")
 
 fig_4_supp_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths))
 
 saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
-    filename="sim_2_known_mse_stab_supp.pdf")
+    filename="sim_3_known_mse_stab_supp.pdf")
 
 
 
@@ -417,7 +414,7 @@ fig_4 <- cowplot::ggdraw(fig_4) +
 
 print(fig_4)
 
-saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4_est.pdf")
+saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_7_est.pdf")
 
 ### Versions of Figure 4 plots with all methods (for supplement)
 
@@ -426,19 +423,19 @@ fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     max_model_size=sig_blocks + k_unblocked)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
-    filename="sim_2_est_mse_supp.pdf")
+    filename="sim_3_est_mse_supp.pdf")
 
 fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(known_cluster_meths)), ])
 
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
-    filename="sim_2_est_stab_supp.pdf")
+    filename="sim_3_est_stab_supp.pdf")
 
 fig_4_supp_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths))
 
 saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
-    filename="sim_2_est_mse_stab_supp.pdf")
+    filename="sim_3_est_mse_stab_supp.pdf")
 
 print("Total time:")
 print(Sys.time() - t0)

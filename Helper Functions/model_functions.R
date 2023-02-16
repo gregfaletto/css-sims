@@ -737,6 +737,64 @@ random_simulate_func_weighted <- function(n, n_clus, n_test, p, k_unblocked,
     return(ret_list)
 }
 
+sim_5_extra_sim_func <- function(n, n_clus, n_test, p, k_unblocked,
+    est_clus_cutoff, beta_low, beta_high, nblocks=1, sig_blocks=1, block_size,
+    rho_high, rho_low, var, snr=NA, sigma_eps_sq=NA, nsim){
+    if(is.na(snr) & is.na(sigma_eps_sq)){
+        stop("Must specify one of snr or sigma_eps_sq")
+    }
+
+    # List we'll return: will be length nsim, and every element will be a
+    # named list with elements X, y, testX, testY, and testMu.
+    ret_list <- list()
+
+    for(i in 1:nsim){
+
+        # Data for estimating clusters
+        clus_data <- cssr::genClusteredDataWeightedRandom(n=n_clus, p=p,
+            k_unclustered=k_unblocked, cluster_size=block_size,
+            n_clusters=nblocks,
+            sig_clusters=sig_blocks, rho_high=rho_high, rho_low=rho_low,
+            beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
+            sigma_eps_sq=sigma_eps_sq)
+
+        # Estimate clusters on clus_data
+        est_clusters <- clustEsts(clus_data$X)
+
+        gen_mu_x_y_sd_res <- cssr::genClusteredDataWeightedRandom(n=n, p=p,
+            k_unclustered=k_unblocked, cluster_size=block_size,
+            n_clusters=nblocks,
+            sig_clusters=sig_blocks, rho_high=rho_high, rho_low=rho_low,
+            beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
+            sigma_eps_sq=sigma_eps_sq)
+
+        test_data <- cssr::genClusteredDataWeightedRandom(n=n_test, p=p,
+            k_unclustered=k_unblocked, cluster_size=block_size,
+            n_clusters=nblocks,
+            sig_clusters=sig_blocks, rho_high=rho_high, rho_low=rho_low,
+            beta_latent=beta_high, beta_unclustered=beta_low, snr=snr,
+            sigma_eps_sq=sigma_eps_sq)
+
+        # All stability selection methods can use same output (other than
+        # estimated vs. known clusters), so we will do this computation once
+        # in the model generation and then use the results in different
+        # ways depending on the method
+        res_known <- getRes(gen_mu_x_y_sd_res$X, gen_mu_x_y_sd_res$y,
+            clusters=1:block_size, nblocks=nblocks, sig_blocks=sig_blocks)
+
+        # Confirm cluster in the results
+        stopifnot(ncol(res_known$clus_sel_mat) == p - block_size + 1)
+
+        res_est <- getRes(gen_mu_x_y_sd_res$X, gen_mu_x_y_sd_res$y,
+            clusters=est_clusters, nblocks=nblocks, sig_blocks=sig_blocks)
+
+        ret_list[[i]] <- list(est_clusters=est_clusters, X=gen_mu_x_y_sd_res$X,
+            y=gen_mu_x_y_sd_res$y, res_known=res_known, res_est=res_est,
+            testX=test_data$X, testY=test_data$y, testMu=test_data$mu)
+    }
+    
+    return(ret_list)
+}
 
 
 
@@ -1051,6 +1109,59 @@ make_blocked_lin_mod4_ran_weight <- function(n, n_clus, n_test, p, k_unblocked,
                     # insig_blocked_vars = coefs$insig_blocked_vars
                     )
                     , simulate = random_simulate_func_weighted
+    )
+    # print("finished generating model")
+    return(my_model)
+}
+
+sim_5_extra <- function(n, n_clus, n_test, p, k_unblocked, 
+    beta_low, beta_high, nblocks=1, sig_blocks=1, block_size, est_clus_cutoff,
+    rho_high, rho_low, var, snr=NA, sigma_eps_sq=NA) {
+    # Same as make_sparse_blocked_linear_model4_random, but makes only
+    # n_strong_block_vars have a high correlation with latent signal; remaining
+    # block_size - n_strong_block_vars variables have low correlation.
+    if(is.na(snr) & is.na(sigma_eps_sq)){
+        stop("Must specify one of snr or sigma_eps_sq")
+    }
+    if(n_strong_block_vars < 0 | n_strong_block_vars > block_size){
+        stop("n_strong_block_vars < 0 | n_strong_block_vars > 0 block_size")
+    }
+
+    if(rho_low >= rho_high){
+        stop("rho_low >= rho_high")
+    }
+
+    # Make sure p is large enough
+    stopifnot(p >= nblocks*block_size + k_unblocked)
+
+    # Sigma <- make_covariance_matrix_weighted(p + sig_blocks, nblocks,
+    #     block_size + sig_blocks, n_strong_block_vars + sig_blocks, rho_high,
+    #     rho_low, var)
+
+    # stopifnot(nrow(Sigma) == p + sig_blocks & ncol(Sigma) == p + sig_blocks)
+
+    # coefs <- make_coefficients4_ranking2(p + sig_blocks, k_unblocked, beta_low,
+    #     beta_high, nblocks, sig_blocks, block_size + 1)
+    
+    my_model <- new_model(name = "sim_5_extra", 
+                label = sprintf("Lin model (weight avg, corr blocks) (n= %s, p= %s, k_unblocked= %s, rho_high= %s)",
+                    n, p, k_unblocked, rho_high),
+                params = list(n = n, n_clus=n_clus, n_test = n_test,
+                    p = p, k_unblocked = k_unblocked, beta_low = beta_low,
+                    est_clus_cutoff=est_clus_cutoff, beta_high = beta_high,
+                    nblocks = nblocks, sig_blocks = sig_blocks,
+                    block_size = block_size, 
+                    rho_high = rho_high,
+                    rho_low = rho_low, var = var,
+                    snr = snr,
+                    sigma_eps_sq = sigma_eps_sq
+                    # Sigma = Sigma,
+                    # beta = coefs$beta,
+                    # blocked_dgp_vars = coefs$blocked_dgp_vars,
+                    # sig_unblocked_vars = coefs$sig_unblocked_vars,
+                    # insig_blocked_vars = coefs$insig_blocked_vars
+                    )
+                    , simulate = sim_5_extra_sim_func
     )
     # print("finished generating model")
     return(my_model)
