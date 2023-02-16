@@ -24,7 +24,7 @@ doParallel::registerDoParallel(cl)
 sim_dir <- getwd()
 
 # load data?
-load_data <- FALSE
+load_data <- TRUE
 
 # Run new study, or load study that has been previously run?
 run_new_study <- TRUE
@@ -38,8 +38,8 @@ train_prop <- 0.4
 cor_cutoff <- 0.5
 
 # Number of draws to take
-# n_draws <- 100
-n_draws <- 60
+n_draws <- 1000
+# n_draws <- 60
 
 # Number of SNPs to use in data set
 n_snps <- 1000
