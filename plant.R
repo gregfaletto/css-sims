@@ -24,10 +24,10 @@ doParallel::registerDoParallel(cl)
 sim_dir <- getwd()
 
 # load data?
-load_data <- TRUE
+load_data <- FALSE
 
 # Run new study, or load study that has been previously run?
-run_new_study <- TRUE
+run_new_study <- FALSE
 
 # Training set proportion
 
@@ -38,8 +38,8 @@ train_prop <- 0.4
 cor_cutoff <- 0.5
 
 # Number of draws to take
-# n_draws <- 1000
-n_draws <- 25
+n_draws <- 1000
+# n_draws <- 25
 
 # Number of SNPs to use in data set
 n_snps <- 1000
@@ -58,7 +58,7 @@ coarseness <- round(p_max_plots/20)
 
 # Minimum number of observations to take an average for MSE or calculate
 # stability metric
-MIN_COUNT <- 10
+MIN_COUNT <- round(n_draws*.01*coarseness)
 
 # Verbose printing in loops?
 verbose <- FALSE
