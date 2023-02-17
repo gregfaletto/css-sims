@@ -688,6 +688,7 @@ getPlantSelecData <- function(selec_inds, response_name){
 	y_selec <- data_plant[selec_inds, response_name]
 
 	stopifnot(length(y_selec) == nrow(X_selec))
+	stopifnot(ncol(X_selec) == p_snps)
 
 	return(list(X=X_selec, y=y_selec))
 }

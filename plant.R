@@ -38,8 +38,8 @@ train_prop <- 0.4
 cor_cutoff <- 0.5
 
 # Number of draws to take
-n_draws <- 1000
-# n_draws <- 60
+# n_draws <- 1000
+n_draws <- 25
 
 # Number of SNPs to use in data set
 n_snps <- 1000
@@ -55,7 +55,6 @@ stopifnot(p_max_plots <= p_max)
 # Coarseness for stability plots (how many model sizes to include in one point?)
 # coarseness <- round(p_max/20)
 coarseness <- round(p_max_plots/20)
-coarseness_plots <- round(p_max_plots/20)
 
 # Minimum number of observations to take an average for MSE or calculate
 # stability metric
@@ -139,10 +138,7 @@ if(load_data){
 	snps <- snps[as.integer(rownames(snps)) %in% pheno$accession_id, ]
 	print("Done!")
 
-	if(ncol(snps) > length(positions)){
-		stop("ncol(snps) > length(positions)")
-	}
-
+	stopifnot(ncol(snps) <= length(positions))
 	colnames(snps) <- paste("x", positions[1:ncol(snps)], sep="")
 
 	# SNPs satisfying any of the following conditions were removed:
@@ -186,9 +182,7 @@ if(load_data){
 
 	pheno <- pheno[!duplicated(pheno), ]
 
-	if(nrow(pheno) != length(unique(pheno$accession_id))){
-		stop("nrow(pheno) != length(unique(pheno$accession_id))")
-	}
+	stopifnot(nrow(pheno) == length(unique(pheno$accession_id)))
 
 	data_plant <- as.data.frame(snps)
 
@@ -217,17 +211,13 @@ if(run_new_study){
 	response_name <- "log_FT10"
 
 	if(!(response_name %in% colnames(data_plant))){
-		if(!("FT10" %in% colnames(data_plant))){
-		stop("!(FT10 %in% colnames(data_plant))")
-	}
+		stopifnot("FT10" %in% colnames(data_plant))
 		# Change response to log
 		data_plant$FT10 <- log(data_plant$FT10)
 		colnames(data_plant)[colnames(data_plant) == "FT10"] <- response_name
 	}
 
-	if(!(response_name %in% colnames(data_plant))){
-		stop("!(response_name %in% colnames(data_plant))")
-	}
+	stopifnot(response_name %in% colnames(data_plant))
 	
 	# Selection, training and test sets
 
@@ -254,6 +244,8 @@ if(run_new_study){
             , lasso_random_plant # Lasso
             , elastic_net_plant # Elastic Net
         ))
+
+    save_simulation(plant_sim)
 
     plant_sim <- plant_sim |> evaluate(list(cssr_mse_plant))
 
