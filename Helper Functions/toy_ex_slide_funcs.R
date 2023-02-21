@@ -4666,7 +4666,7 @@ getBinMat <- function(output, meth, model_sizes, num_sims, p_feat){
 
 
 createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
-    plot_errors=TRUE, subtitle=FALSE, max_model_size){
+    plot_errors=TRUE, subtitle=FALSE, max_model_size, log_mse=FALSE){
 
     if(max_model_size %% 2 == 0){
         max_rank <- max_model_size
@@ -4693,6 +4693,10 @@ createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
 
     if(!legend){
         plot <- plot + theme(legend.position="none")
+    }
+
+    if(log_mse){
+        plot <- plot + scale_y_log10()
     }
 
     return(plot)
@@ -4740,7 +4744,7 @@ createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE,
 
 
 createStabMSEPlot2 <- function(df_gg, n_methods, legend=TRUE, plot_errors=FALSE,
-    subtitle=FALSE){
+    subtitle=FALSE, log_mse=FALSE){
 
     require(ggplot2)
 
@@ -4775,6 +4779,10 @@ createStabMSEPlot2 <- function(df_gg, n_methods, legend=TRUE, plot_errors=FALSE,
 
     if(!legend){
         plot <- plot + theme(legend.position="none")
+    }
+
+    if(log_mse){
+        plot <- plot + scale_y_log10()
     }
 
     return(plot)

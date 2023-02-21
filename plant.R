@@ -275,7 +275,7 @@ n_methods <- results$n_methods
 
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_plant", "SS_CSS_avg_cssr_plant"))), ],
-	n_methods - 2, plot_errors=FALSE, max_model_size=p_max)
+	n_methods - 2, plot_errors=FALSE, max_model_size=p_max, log_mse=TRUE)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_plant", "SS_CSS_avg_cssr_plant"))), ],
@@ -283,7 +283,7 @@ fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_plant", "SS_CSS_avg_cssr_plant"))), ],
-	n_methods - 2, plot_errors=FALSE)
+	n_methods - 2, plot_errors=FALSE, log_mse=TRUE)
 
 # 2. Save the legend
 #+++++++++++++++++++++++
@@ -314,7 +314,7 @@ saveFigure2(subdir="figures", plot=fig_4, size="large",
 ### Versions of Figure 4 plots with all methods (for supplement)
 
 fig_4_supp_left <- createLossesPlot3(results_df, n_methods,
-	plot_errors=FALSE, max_model_size=p_max)
+	plot_errors=FALSE, max_model_size=p_max, log_mse=TRUE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
     filename="real_data_mse_supp.pdf")
@@ -324,7 +324,8 @@ fig_4_supp_mid <- createNSBStabPlot2(results_df, plot_errors=FALSE)
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
     filename="real_data_stab_supp.pdf")
 
-fig_4_supp_right <- createStabMSEPlot2(results_df, n_methods, plot_errors=FALSE)
+fig_4_supp_right <- createStabMSEPlot2(results_df, n_methods, plot_errors=FALSE,
+	log_mse=TRUE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
     filename="real_data_mse_stab_supp.pdf")
