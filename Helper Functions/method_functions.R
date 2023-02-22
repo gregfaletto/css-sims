@@ -894,7 +894,7 @@ SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 	model_size <- model$k_unblocked + model$sig_blocks
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_known, weighting="sparse",
-			max_num_clusts=i)
+			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
@@ -925,7 +925,7 @@ SS_CSS_sparse_cssr_est <- new_method("SS_CSS_sparse_cssr_est",
 	model_size <- model$k_unblocked + model$sig_blocks
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="sparse",
-			max_num_clusts=i)
+			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
@@ -956,7 +956,7 @@ SS_CSS_sparse_cssr_plant <- new_method("SS_CSS_sparse_cssr_plant",
 
 	for(i in 1:model$max_model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="sparse",
-			max_num_clusts=i)
+			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
@@ -1129,7 +1129,7 @@ SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 	selected_clusts <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_known,
-			weighting="weighted_avg", max_num_clusts=i)
+			weighting="weighted_avg", min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
@@ -1160,7 +1160,7 @@ SS_CSS_weighted_cssr_est <- new_method("SS_CSS_weighted_cssr_est",
 	selected_clusts <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="weighted_avg",
-			max_num_clusts=i)
+			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
@@ -1191,7 +1191,7 @@ SS_CSS_weighted_cssr_plant <- new_method("SS_CSS_weighted_cssr_plant",
 
 	for(i in 1:model$max_model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="weighted_avg",
-			max_num_clusts=i)
+			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
@@ -1405,7 +1405,7 @@ SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
 	selected_clusts <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_known, weighting="simple_avg",
-			max_num_clusts=i)
+			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
@@ -1436,7 +1436,7 @@ SS_CSS_avg_cssr_est <- new_method("SS_CSS_avg_cssr_est",
 	selected_clusts <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="simple_avg",
-			max_num_clusts=i)
+			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
@@ -1467,7 +1467,7 @@ SS_CSS_avg_cssr_plant <- new_method("SS_CSS_avg_cssr_plant",
 
 	for(i in 1:model$max_model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="simple_avg",
-			max_num_clusts=i)
+			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
