@@ -24,10 +24,10 @@ doParallel::registerDoParallel(cl)
 sim_dir <- getwd()
 
 # load data?
-load_data <- FALSE
+load_data <- TRUE
 
 # Run new study, or load study that has been previously run?
-run_new_study <- FALSE
+run_new_study <- TRUE
 
 # Training set proportion
 
@@ -45,16 +45,16 @@ n_draws <- 1000
 n_snps <- 1000
 
 # Largest model size to use in evaluations
-p_max <- round(n_snps/10)
+p_max <- 75
 
 # Largest model size to use in plots
-p_max_plots <- round(n_snps/10)
+p_max_plots <- 75
 
 stopifnot(p_max_plots <= p_max)
 
 # Coarseness for stability plots (how many model sizes to include in one point?)
 # coarseness <- round(p_max/20)
-coarseness <- round(p_max_plots/20)
+coarseness <- 5
 
 # Minimum number of observations to take an average for MSE or calculate
 # stability metric
