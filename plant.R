@@ -45,7 +45,7 @@ n_draws <- 1000
 n_snps <- 1000
 
 # Largest model size to use in evaluations
-p_max <- 75
+p_max <- 60
 
 # Largest model size to use in plots
 p_max_plots <- 60
