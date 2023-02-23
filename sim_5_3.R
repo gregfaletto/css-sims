@@ -104,8 +104,8 @@ n_model <- 200
 n_clus <- 200
 # Cutoff for absolute correlation for estimated clusters
 est_clus_cutoff <- 0.5
-n_test <- 10000
-n_sims <- 1000
+n_test <- 1000
+n_sims <- 2000
 # n_sims <- 10
 # p <- 50
 p <- 100
