@@ -24,10 +24,10 @@ doParallel::registerDoParallel(cl)
 sim_dir <- getwd()
 
 # load data?
-load_data <- TRUE
+load_data <- FALSE
 
 # Run new study, or load study that has been previously run?
-run_new_study <- TRUE
+run_new_study <- FALSE
 
 # Training set proportion
 
@@ -48,7 +48,7 @@ n_snps <- 1000
 p_max <- 75
 
 # Largest model size to use in plots
-p_max_plots <- 75
+p_max_plots <- 60
 
 stopifnot(p_max_plots <= p_max)
 
@@ -271,19 +271,22 @@ results_df <- results$results_df
 
 n_methods <- results$n_methods
 
-### Figure 4 (previously Figure 5) (known clusters)
+### Figure 4 (previously Figure 5) 
+# Omit uncompetitive methods for visual clarity
 
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr_plant", "SS_CSS_avg_cssr_plant"))), ],
-	n_methods - 2, plot_errors=FALSE, max_model_size=p_max, log_mse=TRUE)
+    nameMap(c("SS_CSS_sparse_cssr_plant", "elastic_net_plant",
+    	"lasso_random_plant"))), ], n_methods - 3, plot_errors=FALSE,
+	max_model_size=p_max, log_mse=TRUE)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr_plant", "SS_CSS_avg_cssr_plant"))), ],
-	plot_errors=FALSE)
+    nameMap(c("SS_CSS_sparse_cssr_plant", "elastic_net_plant",
+    	"lasso_random_plant"))), ], plot_errors=FALSE)
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr_plant", "SS_CSS_avg_cssr_plant"))), ],
-	n_methods - 2, plot_errors=FALSE, log_mse=TRUE)
+    nameMap(c("SS_CSS_sparse_cssr_plant", "elastic_net_plant",
+    	"lasso_random_plant"))), ], n_methods - 3, plot_errors=FALSE,
+	log_mse=TRUE)
 
 # 2. Save the legend
 #+++++++++++++++++++++++
