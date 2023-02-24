@@ -85,7 +85,7 @@ setwd(wd)
 ###############################################
 
 # Run simulation, or load simulation that has been previously run?
-run_new_sim <- TRUE
+run_new_sim <- FALSE
 # Titles on p_hat plots?
 p_hat_titles <- TRUE
 # legends on mse/false selection/proxy selection plots
@@ -369,16 +369,19 @@ saveFigure2(subdir="figures", plot=fig_2, size="mlarge", filename="fig_2.pdf")
 ### Figure 3 (known clusters)
 
 fig_3_left <- createLossesPlot3(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ],
-    n_methods - 2 - length(est_cluster_meths), max_model_size=sig_blocks +
+    nameMap(c("SS_CSS_sparse_cssr", "lasso_random", "elastic_net",
+        est_cluster_meths))), ],
+    n_methods - 3 - length(est_cluster_meths), max_model_size=sig_blocks +
     k_unblocked)
 
 fig_3_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ])
+    nameMap(c("SS_CSS_sparse_cssr", "lasso_random", "elastic_net",
+        est_cluster_meths))), ])
 
 fig_3_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ],
-    n_methods - 2 - length(est_cluster_meths))
+    nameMap(c("SS_CSS_sparse_cssr", "lasso_random", "elastic_net",
+        est_cluster_meths))), ],
+    n_methods - 3 - length(est_cluster_meths))
 
 # 2. Save the legend
 #+++++++++++++++++++++++
@@ -433,16 +436,18 @@ saveFigure2(subdir="figures", plot=fig_3_supp_right, size="xmlarge",
 
 fig_3_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est",
-        "SS_CSS_avg_cssr_est", known_cluster_meths))), ],
-    n_methods - 2 - length(known_cluster_meths), max_model_size=sig_blocks +
+        "lasso_random", "elastic_net", known_cluster_meths))), ],
+    n_methods - 3 - length(known_cluster_meths), max_model_size=sig_blocks +
     k_unblocked)
 
 fig_3_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est", known_cluster_meths))), ])
+    nameMap(c("SS_CSS_sparse_cssr_est", "lasso_random", "elastic_net",
+        known_cluster_meths))), ])
 
 fig_3_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est", known_cluster_meths))), ],
-    n_methods - 2 - length(known_cluster_meths))
+    nameMap(c("SS_CSS_sparse_cssr_est", "lasso_random", "elastic_net",
+        known_cluster_meths))), ],
+    n_methods - 3 - length(known_cluster_meths))
 
 # 2. Save the legend
 #+++++++++++++++++++++++

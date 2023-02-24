@@ -138,9 +138,9 @@ nameMap <- function(sys_name){
     ret[sys_name %in%  c("SS_CSS_sparse_cssr_est")] <- "Sparse CSS (est. clusts)"
     ret[sys_name %in%  c("SS_GSS_random_avg", "SS_GSS_random_avg_custom",
         "SS_GSS_avg", "SS_CSS_weighted_cssr", "SS_CSS_weighted_cssr_plant")] <-
-        "CSS"
+        "Weighted Averaged CSS"
         ret[sys_name %in%  c("SS_CSS_weighted_cssr_est")] <-
-        "CSS (est. clusts)"
+        "Weighted Averaged CSS (est. clusts)"
     ret[sys_name %in%  c("SS_GSS_random_avg_unwt", "SS_GSS_avg_unwt",
         "SS_GSS_random_avg_unwt_custom", "SS_CSS_avg_cssr",
         "SS_CSS_avg_cssr_plant")] <- "Simple Averaged CSS"
