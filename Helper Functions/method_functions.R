@@ -891,6 +891,7 @@ SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 
 	selected <- list()
 	selected_clusts <- list()
+	weights <- list()
 	model_size <- model$k_unblocked + model$sig_blocks
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_known, weighting="sparse",
@@ -898,18 +899,20 @@ SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
+		weights_i <- res_i$weights
 
 		stopifnot(length(clusts_i) <= length(set_i))
 		
 		if(length(clusts_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
+			weights[[i]] <- weights_i
 		}
 	}
 
 	return(list(css_res=draw$res_known, selected=selected,
-		selected_clusts=selected_clusts, method="sparse", testX=draw$testX,
-		testY=draw$testY, testMu=draw$testMu))
+		selected_clusts=selected_clusts, weights=weights, method="sparse",
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
 	settings = list(B=100)
@@ -922,6 +925,7 @@ SS_CSS_sparse_cssr_est <- new_method("SS_CSS_sparse_cssr_est",
 
 	selected <- list()
 	selected_clusts <- list()
+	weights <- list()
 	model_size <- model$k_unblocked + model$sig_blocks
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="sparse",
@@ -929,18 +933,20 @@ SS_CSS_sparse_cssr_est <- new_method("SS_CSS_sparse_cssr_est",
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
+		weights_i <- res_i$weights
 
 		stopifnot(length(clusts_i) <= length(set_i))
 		
 		if(length(clusts_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
+			weights[[i]] <- weights_i
 		}
 	}
 
 	return(list(css_res=draw$res_est, selected=selected,
-		selected_clusts=selected_clusts, method="sparse", testX=draw$testX,
-		testY=draw$testY, testMu=draw$testMu))
+		selected_clusts=selected_clusts, weights=weights, method="sparse",
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
 	settings = list(B=100)
@@ -953,6 +959,7 @@ SS_CSS_sparse_cssr_plant <- new_method("SS_CSS_sparse_cssr_plant",
 
 	selected <- list()
 	selected_clusts <- list()
+	weights <- list()
 
 	for(i in 1:model$max_model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="sparse",
@@ -960,17 +967,19 @@ SS_CSS_sparse_cssr_plant <- new_method("SS_CSS_sparse_cssr_plant",
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
+		weights_i <- res_i$weights
 
 		stopifnot(length(clusts_i) <= length(set_i))
 		
 		if(length(clusts_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
+			weights[[i]] <- weights_i
 		}
 	}
 
 	return(list(css_res=draw$res_est, selected=selected,
-		selected_clusts=selected_clusts, method="sparse",
+		selected_clusts=selected_clusts, weights=weights, method="sparse",
 		train_inds=draw$train_inds, test_inds=draw$test_inds))
 
 	},
@@ -1127,23 +1136,26 @@ SS_CSS_weighted_cssr <- new_method("SS_CSS_weighted_cssr",
 	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- list()
 	selected_clusts <- list()
+	weights <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_known,
 			weighting="weighted_avg", min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
+		weights_i <- res_i$weights
 
 		stopifnot(length(clusts_i) <= length(set_i))
 		
 		if(length(clusts_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
+			weights[[i]] <- weights_i
 		}
 	}
 
 	return(list(css_res=draw$res_known, selected=selected,
-		selected_clusts=selected_clusts, method="weighted_avg",
+		selected_clusts=selected_clusts, weights=weights, method="weighted_avg",
 		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
@@ -1158,22 +1170,26 @@ SS_CSS_weighted_cssr_est <- new_method("SS_CSS_weighted_cssr_est",
 	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- list()
 	selected_clusts <- list()
+	weights <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="weighted_avg",
 			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
+		weights_i <- res_i$weights
 
 		stopifnot(length(clusts_i) <= length(set_i))
 		
 		if(length(clusts_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
+			weights[[i]] <- weights_i
 		}
 	}
 
-	return(list(css_res=draw$res_est, selected=selected, selected_clusts=selected_clusts,
+	return(list(css_res=draw$res_est, selected=selected,
+		selected_clusts=selected_clusts, weights=weights,
 		method="weighted_avg", testX=draw$testX, testY=draw$testY,
 		testMu=draw$testMu))
 
@@ -1188,6 +1204,7 @@ SS_CSS_weighted_cssr_plant <- new_method("SS_CSS_weighted_cssr_plant",
 
 	selected <- list()
 	selected_clusts <- list()
+	weights <- list()
 
 	for(i in 1:model$max_model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="weighted_avg",
@@ -1195,17 +1212,19 @@ SS_CSS_weighted_cssr_plant <- new_method("SS_CSS_weighted_cssr_plant",
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
+		weights_i <- res_i$weights
 
 		stopifnot(length(clusts_i) <= length(set_i))
 		
 		if(length(clusts_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
+			weights[[i]] <- weights_i
 		}
 	}
 
 	return(list(css_res=draw$res_est, selected=selected,
-		selected_clusts=selected_clusts, method="weighted_avg",
+		selected_clusts=selected_clusts, weights=weights, method="weighted_avg",
 		train_inds=draw$train_inds, test_inds=draw$test_inds))
 	},
 	settings = list(B=100)
@@ -1403,24 +1422,27 @@ SS_CSS_avg_cssr <- new_method("SS_CSS_avg_cssr",
 	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- list()
 	selected_clusts <- list()
+	weights <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_known, weighting="simple_avg",
 			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
+		weights_i <- res_i$weights
 
 		stopifnot(length(clusts_i) <= length(set_i))
 		
 		if(length(clusts_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
+			weights[[i]] <- weights_i
 		}
 	}
 
 	return(list(css_res=draw$res_known, selected=selected,
-		selected_clusts=selected_clusts, method="simple_avg", testX=draw$testX,
-		testY=draw$testY, testMu=draw$testMu))
+		selected_clusts=selected_clusts, weights=weights, method="simple_avg",
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
 	settings = list(B=100)
@@ -1434,24 +1456,27 @@ SS_CSS_avg_cssr_est <- new_method("SS_CSS_avg_cssr_est",
 	model_size <- model$k_unblocked + model$sig_blocks
 	selected <- list()
 	selected_clusts <- list()
+	weights <- list()
 	for(i in 1:model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="simple_avg",
 			min_num_clusts=i, max_num_clusts=i)
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
+		weights_i <- res_i$weights
 
 		stopifnot(length(clusts_i) <= length(set_i))
 		
 		if(length(clusts_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
+			weights[[i]] <- weights_i
 		}
 	}
 
 	return(list(css_res=draw$res_est, selected=selected,
-		selected_clusts=selected_clusts, method="simple_avg", testX=draw$testX,
-		testY=draw$testY, testMu=draw$testMu))
+		selected_clusts=selected_clusts, weights=weights, method="simple_avg",
+		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
 	settings = list(B=100)
@@ -1464,6 +1489,7 @@ SS_CSS_avg_cssr_plant <- new_method("SS_CSS_avg_cssr_plant",
 
 	selected <- list()
 	selected_clusts <- list()
+	weights <- list()
 
 	for(i in 1:model$max_model_size){
 		res_i <- cssr::getCssSelections(draw$res_est, weighting="simple_avg",
@@ -1471,17 +1497,19 @@ SS_CSS_avg_cssr_plant <- new_method("SS_CSS_avg_cssr_plant",
 
 		set_i <- res_i$selected_feats
 		clusts_i <- res_i$selected_clusts
+		weights_i <- res_i$weights
 
 		stopifnot(length(clusts_i) <= length(set_i))
 		
 		if(length(clusts_i) == i){
 			selected[[i]] <- set_i
 			selected_clusts[[i]] <- clusts_i
+			weights[[i]] <- weights_i
 		}
 	}
 
 	return(list(css_res=draw$res_est, selected=selected,
-		selected_clusts=selected_clusts, method="simple_avg",
+		selected_clusts=selected_clusts, weights=weights, method="simple_avg",
 		train_inds=draw$train_inds, test_inds=draw$test_inds))
 	},
 	settings = list(B=100)
