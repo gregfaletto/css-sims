@@ -132,6 +132,8 @@ nameMap <- function(sys_name){
     ret[sys_name %in%  c("lassoSS_phat", "SS_SS_random",
         "SS_SS_random_custom", "SS_SS", "SS_SS_cssr", "SS_SS_cssr_plant")] <-
         "Stability Selection"
+    ret[sys_name %in%  c("SS_SS_cssr_elnet", "SS_SS_cssr_elnet_plant")] <-
+        "SS (Elastic Net)"
     ret[sys_name %in%  c("lassoSS_phat_ideal", "SS_GSS_random",
         "SS_GSS_random_custom", "SS_GSS", "SS_CSS_sparse_cssr",
         "SS_CSS_sparse_cssr_plant")] <- "Sparse CSS"

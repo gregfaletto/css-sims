@@ -120,7 +120,7 @@ p <- 100
 #     ))
 nblocks <- 1
 sig_blocks <- 1
-k_unblocked <- 10
+k_unblocked <- 12
 beta_low <- 1
 # beta_low_min <- 0.55
 # beta_low_max <- 1
@@ -132,7 +132,7 @@ beta_high <- 1.5
 #     # , 2
 #     # , sqrt(k_unblocked)
 #     ))
-block_size <- 10
+block_size <- 5
 rho <- 0.9
 # rho_low <- 0.9
 # rho_high <- 0.9
@@ -286,6 +286,8 @@ if(run_new_sim){
             run_method(c(
             SS_SS_cssr # Stability selection (as proposed by Shah and
             # Samworth 2012)
+            , SS_SS_cssr_elnet # Stability selection with elastic net as
+            # base procedure
             , SS_CSS_sparse_cssr # Sparse cluster stability selection
             , SS_CSS_weighted_cssr # Weighted averaged cluster stability
             # selection

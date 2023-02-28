@@ -269,6 +269,8 @@ if(run_new_sim){
         gss_random_weighted_random <- gss_random_weighted_random %>%
         run_method(c(SS_SS_cssr # Stability selection (as proposed by Shah and
             # Samworth 2012)
+            , SS_SS_cssr_elnet # Stability selection with elastic net as
+            # base procedure
             , SS_CSS_sparse_cssr # Sparse cluster stability selection
             # , SS_GSS_random_custom # Sparse cluster stability selection
             , SS_CSS_weighted_cssr # Weighted averaged cluster stability

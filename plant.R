@@ -24,10 +24,10 @@ doParallel::registerDoParallel(cl)
 sim_dir <- getwd()
 
 # load data?
-load_data <- FALSE
+load_data <- TRUE
 
 # Run new study, or load study that has been previously run?
-run_new_study <- FALSE
+run_new_study <- TRUE
 
 # Training set proportion
 
@@ -38,8 +38,8 @@ train_prop <- 0.4
 cor_cutoff <- 0.5
 
 # Number of draws to take
-n_draws <- 1000
-# n_draws <- 25
+# n_draws <- 1000
+n_draws <- 5
 
 # Number of SNPs to use in data set
 n_snps <- 1000
@@ -234,6 +234,8 @@ if(run_new_study){
         	max_model_size=p_max) |> simulate_from_model(nsim = n_draws) |>
         run_method(c(SS_SS_cssr_plant # Stability selection (as proposed by Shah and
             # Samworth 2012)
+            , SS_SS_cssr_elnet_plant # Stability selection with elastic net as
+            # base procedure
             , SS_CSS_sparse_cssr_plant # Sparse cluster stability selection
             , SS_CSS_weighted_cssr_plant # Weighted averaged cluster stability
             # selection
@@ -276,16 +278,16 @@ n_methods <- results$n_methods
 
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_plant", "elastic_net_plant",
-    	"lasso_random_plant"))), ], n_methods - 3, plot_errors=FALSE,
+    	"SS_SS_cssr_elnet_plant"))), ], n_methods - 3, plot_errors=FALSE,
 	max_model_size=p_max, log_mse=TRUE, break_by=2*coarseness)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_plant", "elastic_net_plant",
-    	"lasso_random_plant"))), ], plot_errors=FALSE, break_by=2*coarseness)
+    	"SS_SS_cssr_elnet_plant"))), ], plot_errors=FALSE, break_by=2*coarseness)
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_plant", "elastic_net_plant",
-    	"lasso_random_plant"))), ], n_methods - 3, plot_errors=FALSE,
+    	"SS_SS_cssr_elnet_plant"))), ], n_methods - 3, plot_errors=FALSE,
 	log_mse=TRUE)
 
 # 2. Save the legend

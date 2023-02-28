@@ -1,180 +1,180 @@
 ############# Utility Functions
 
-complementaryPairSamplingIndicators <- function(X.dat, y, B, q){
-	# Output: returns a p x 2B matrix of selected features. Each column contains
-	# a set of selected features, with a 1 in row i of column j if feature i was
-	# selected in iteration j, and a 0 otherwise.
-	#
-	# Inputs:
-	# X.dat: design matrix
-	# y: responses
-	# B: number of resamples
-	# q: Number of features to select on each lasso iteration (glmnet chooses a 
-	# suitable lambda such that (approximately) q features are selected)
+# complementaryPairSamplingIndicators <- function(X.dat, y, B, q){
+# 	# Output: returns a p x 2B matrix of selected features. Each column contains
+# 	# a set of selected features, with a 1 in row i of column j if feature i was
+# 	# selected in iteration j, and a 0 otherwise.
+# 	#
+# 	# Inputs:
+# 	# X.dat: design matrix
+# 	# y: responses
+# 	# B: number of resamples
+# 	# q: Number of features to select on each lasso iteration (glmnet chooses a 
+# 	# suitable lambda such that (approximately) q features are selected)
 
-	if(q != round(q) | q <= 0){
-		stop("q != round(q) | q <= 0")
-	}
-	n <- nrow(X.dat)
-	p <- ncol(X.dat)
-	# Per Samworth & Shah, take a sample (without replacement)
-	# of size floor(n/2)
-	samp_size <- floor(n/2)
-	# p by 2B matrix; in each of 2B columns, the jth row will equal 1
-	# if that feature was selected, and zero otherwise
-	selected_features <- matrix(numeric(p*2*B), ncol=(2*B))
-	# Complete B repetitions of the following:
-	for(i in 1:B){
-		# Per Samworth & Shah, take complementary pairwise samples
-		order <- sample(n)
-		sample1 <- order[1:samp_size]
-		sample2 <- order[(samp_size+1):(samp_size+samp_size)]
-		# Fit the lasso using glmnet, choosing range of lambdas such that a
-		# maximum of q features are selected.
-		# use suppressWarnings because otherwise it gives this useless
-		# error about q working properly
-		q_to_check <- c(q, q + 1, q - 1, q + 2, q - 2, q + 3, q - 3)
-		q_to_check <- q_to_check[q_to_check > 0]
+# 	if(q != round(q) | q <= 0){
+# 		stop("q != round(q) | q <= 0")
+# 	}
+# 	n <- nrow(X.dat)
+# 	p <- ncol(X.dat)
+# 	# Per Samworth & Shah, take a sample (without replacement)
+# 	# of size floor(n/2)
+# 	samp_size <- floor(n/2)
+# 	# p by 2B matrix; in each of 2B columns, the jth row will equal 1
+# 	# if that feature was selected, and zero otherwise
+# 	selected_features <- matrix(numeric(p*2*B), ncol=(2*B))
+# 	# Complete B repetitions of the following:
+# 	for(i in 1:B){
+# 		# Per Samworth & Shah, take complementary pairwise samples
+# 		order <- sample(n)
+# 		sample1 <- order[1:samp_size]
+# 		sample2 <- order[(samp_size+1):(samp_size+samp_size)]
+# 		# Fit the lasso using glmnet, choosing range of lambdas such that a
+# 		# maximum of q features are selected.
+# 		# use suppressWarnings because otherwise it gives this useless
+# 		# error about q working properly
+# 		q_to_check <- c(q, q + 1, q - 1, q + 2, q - 2, q + 3, q - 3)
+# 		q_to_check <- q_to_check[q_to_check > 0]
 
-		selected1_q <- numeric()
-		nlambda <- 1000*q
-		lambda.min.ratio <- max(0.01, 1/(2*q^2))
-		nloops <- 1
+# 		selected1_q <- numeric()
+# 		nlambda <- 1000*q
+# 		lambda.min.ratio <- max(0.01, 1/(2*q^2))
+# 		nloops <- 1
 
-		selected2_q <- numeric()
-		nlambda <- 1000*q
-		# lambda.min.ratio <- max(0.01, 1/(2*q^1.5))
-		# nloops <- 1
+# 		selected2_q <- numeric()
+# 		nlambda <- 1000*q
+# 		# lambda.min.ratio <- max(0.01, 1/(2*q^1.5))
+# 		# nloops <- 1
 
-		while(length(selected1_q) == 0 | length(selected2_q) == 0){
-			fit1 <- suppressWarnings(glmnet(x=X.dat[sample1, ], y=y[sample1],
-				family="gaussian", alpha=1, nlambda=nlambda, lambda.min.ratio=lambda.min.ratio))
-			selected1 <- unique(predict(fit1, type="nonzero"))
-			# Lasso selected set of size q
-	        selected1_q <- selected1[lapply(selected1, length) %in% q_to_check]
+# 		while(length(selected1_q) == 0 | length(selected2_q) == 0){
+# 			fit1 <- suppressWarnings(glmnet(x=X.dat[sample1, ], y=y[sample1],
+# 				family="gaussian", alpha=1, nlambda=nlambda, lambda.min.ratio=lambda.min.ratio))
+# 			selected1 <- unique(predict(fit1, type="nonzero"))
+# 			# Lasso selected set of size q
+# 	        selected1_q <- selected1[lapply(selected1, length) %in% q_to_check]
 
 
-	        fit2 <- suppressWarnings(glmnet(x=X.dat[sample2, ], y=y[sample2],
-				family="gaussian", alpha=1, nlambda=1000, lambda.min.ratio=0.25))
-			selected2 <- unique(predict(fit2, type="nonzero"))
-			# Lasso selected set of size q
-	        selected2_q <- selected2[lapply(selected2, length) %in% q_to_check]
-	        # if(length(selected1_q) == 0){
-	        # 	print(unique(predict(fit1, type="nonzero")))
-	        # 	print("q:")
-	        # 	print(q)
-	        #     stop("length(selected1_q) == 0")
-	        # }
-	        # If we didn't get a match, try again with a new sample, bigger
-	        # nlambda, and smaller lambda.min.ratio.
-	        if(nloops < 4){
-	        	nlambda <- nlambda*10
-	        	lambda.min.ratio <- lambda.min.ratio/3
-	        }
-	        if(nloops > 2){
-	        	print("nloops:")
-	        	print(nloops)
-	        }
-	        nloops <- nloops + 1
-	        order <- sample(n)
-			sample1 <- order[1:samp_size]
-			sample2 <- order[(samp_size+1):(samp_size+samp_size)]
-	        if(nloops == 10){
-	        	print(X.dat)
-	        	stop("nloops too big")
-	        }
-        }
-        for(q_prime in q_to_check){
-        	if(any(lapply(selected1, length) == q_prime)){
-        		set_to_choose <- which(lapply(selected1, length) == q_prime)
-        		# print("set_to_choose:")
-        		# print(set_to_choose)
-				set_to_choose <- set_to_choose[1]
-				selected1 <- selected1[[set_to_choose]]
-				break
-        	}
-        	if(length(selected1) == 0){
-        		next
-        	}
-        }
-        if(length(selected1) == 0){
-        	print(unique(predict(fit1, type="nonzero")))
-        	print("q:")
-        	print(q)
-    		stop("length(selected2) == 0")
-    	}
+# 	        fit2 <- suppressWarnings(glmnet(x=X.dat[sample2, ], y=y[sample2],
+# 				family="gaussian", alpha=1, nlambda=1000, lambda.min.ratio=0.25))
+# 			selected2 <- unique(predict(fit2, type="nonzero"))
+# 			# Lasso selected set of size q
+# 	        selected2_q <- selected2[lapply(selected2, length) %in% q_to_check]
+# 	        # if(length(selected1_q) == 0){
+# 	        # 	print(unique(predict(fit1, type="nonzero")))
+# 	        # 	print("q:")
+# 	        # 	print(q)
+# 	        #     stop("length(selected1_q) == 0")
+# 	        # }
+# 	        # If we didn't get a match, try again with a new sample, bigger
+# 	        # nlambda, and smaller lambda.min.ratio.
+# 	        if(nloops < 4){
+# 	        	nlambda <- nlambda*10
+# 	        	lambda.min.ratio <- lambda.min.ratio/3
+# 	        }
+# 	        if(nloops > 2){
+# 	        	print("nloops:")
+# 	        	print(nloops)
+# 	        }
+# 	        nloops <- nloops + 1
+# 	        order <- sample(n)
+# 			sample1 <- order[1:samp_size]
+# 			sample2 <- order[(samp_size+1):(samp_size+samp_size)]
+# 	        if(nloops == 10){
+# 	        	print(X.dat)
+# 	        	stop("nloops too big")
+# 	        }
+#         }
+#         for(q_prime in q_to_check){
+#         	if(any(lapply(selected1, length) == q_prime)){
+#         		set_to_choose <- which(lapply(selected1, length) == q_prime)
+#         		# print("set_to_choose:")
+#         		# print(set_to_choose)
+# 				set_to_choose <- set_to_choose[1]
+# 				selected1 <- selected1[[set_to_choose]]
+# 				break
+#         	}
+#         	if(length(selected1) == 0){
+#         		next
+#         	}
+#         }
+#         if(length(selected1) == 0){
+#         	print(unique(predict(fit1, type="nonzero")))
+#         	print("q:")
+#         	print(q)
+#     		stop("length(selected2) == 0")
+#     	}
 
     	
 
-        for(q_prime in q_to_check){
-        	if(any(lapply(selected2, length) == q_prime)){
-        		set_to_choose <- which(lapply(selected2, length) == q_prime)
-				set_to_choose <- set_to_choose[1]
-				selected2 <- selected2[[set_to_choose]]
-				break
-        	}
-        	if(length(selected2) == 0){
-        		next
-        	}
-        }
-        if(length(selected2) == 0){
-        	print(unique(predict(fit2, type="nonzero")))
-        	print("q:")
-        	print(q)
-    		stop("length(selected2) == 0")
-    	}
+#         for(q_prime in q_to_check){
+#         	if(any(lapply(selected2, length) == q_prime)){
+#         		set_to_choose <- which(lapply(selected2, length) == q_prime)
+# 				set_to_choose <- set_to_choose[1]
+# 				selected2 <- selected2[[set_to_choose]]
+# 				break
+#         	}
+#         	if(length(selected2) == 0){
+#         		next
+#         	}
+#         }
+#         if(length(selected2) == 0){
+#         	print(unique(predict(fit2, type="nonzero")))
+#         	print("q:")
+#         	print(q)
+#     		stop("length(selected2) == 0")
+#     	}
 
-		# fit1 <- suppressWarnings(glmnet(x=X.dat[sample1, ],
-		# 	y=y[sample1], family="gaussian", pmax=q))
-		# fit2 <- suppressWarnings(glmnet(x=X.dat[sample2, ],
-		# 	y=y[sample2], family="gaussian", pmax=q))
-		# ## which coefficients are non-zero?
-	 #    selected1 <- predict(fit1, type="nonzero")
-	 #    selected2 <- predict(fit2, type="nonzero")
-	 #    # Choose the features chosen at the particular lambda where q
-	 #    # features were selected (i.e. the smallest or last lambda)
-	 #    for(i in length(selected1):1){
-	 #    	if(length(selected1[[i]]) != 0){
-	 #    		selected1 <- selected1[[i]]
-	 #    		# print(selected1)
-	 #    		break
-	 #    	}
-	 #    	if(i==1){
-	 #    		print(selected1)
-	 #    		stop("All selected sets empty")
-	 #    	}
-	 #    }
-	 #    for(i in length(selected2):1){
-	 #    	if(length(selected2[[i]]) != 0){
-	 #    		selected2 <- selected2[[i]]
-	 #    		break
-	 #    	}
-	 #    	if(i==1){
-	 #    		print(selected2)
-	 #    		stop("All selected sets empty")
-	 #    	}
-	 #    }
-	    if(length(selected1) == 0 | length(selected2) == 0){
-	    	stop("all(selected1 == 0) | all(selected2 == 0)")
-	    }
-	    if(length(selected1) == 1 | length(selected2) == 1){
-	    	warning("length(selected1) == 1 | length(selected2) == 1)")
-	    }
-	    # In the (2i - 1)th column of selected_features, make the jth entry
-	    # equal 1 if that feature was selected in selected1, and leave it
-	    # as zero otherwise. Likewise with the (2i)th column and selected2.
-	    selected_features[selected1, 2*i-1] <- 1
-	    selected_features[selected2, 2*i] <- 1
-	}
-	for(i in 1:(2*B)){
-		if(all(selected_features[, i] == 0)){
-			print(i)
-			print(selected_features[, i])
-			stop("all(selected_features[, i] == 0)")
-		}
-	}
-	return(selected_features)
-}
+# 		# fit1 <- suppressWarnings(glmnet(x=X.dat[sample1, ],
+# 		# 	y=y[sample1], family="gaussian", pmax=q))
+# 		# fit2 <- suppressWarnings(glmnet(x=X.dat[sample2, ],
+# 		# 	y=y[sample2], family="gaussian", pmax=q))
+# 		# ## which coefficients are non-zero?
+# 	 #    selected1 <- predict(fit1, type="nonzero")
+# 	 #    selected2 <- predict(fit2, type="nonzero")
+# 	 #    # Choose the features chosen at the particular lambda where q
+# 	 #    # features were selected (i.e. the smallest or last lambda)
+# 	 #    for(i in length(selected1):1){
+# 	 #    	if(length(selected1[[i]]) != 0){
+# 	 #    		selected1 <- selected1[[i]]
+# 	 #    		# print(selected1)
+# 	 #    		break
+# 	 #    	}
+# 	 #    	if(i==1){
+# 	 #    		print(selected1)
+# 	 #    		stop("All selected sets empty")
+# 	 #    	}
+# 	 #    }
+# 	 #    for(i in length(selected2):1){
+# 	 #    	if(length(selected2[[i]]) != 0){
+# 	 #    		selected2 <- selected2[[i]]
+# 	 #    		break
+# 	 #    	}
+# 	 #    	if(i==1){
+# 	 #    		print(selected2)
+# 	 #    		stop("All selected sets empty")
+# 	 #    	}
+# 	 #    }
+# 	    if(length(selected1) == 0 | length(selected2) == 0){
+# 	    	stop("all(selected1 == 0) | all(selected2 == 0)")
+# 	    }
+# 	    if(length(selected1) == 1 | length(selected2) == 1){
+# 	    	warning("length(selected1) == 1 | length(selected2) == 1)")
+# 	    }
+# 	    # In the (2i - 1)th column of selected_features, make the jth entry
+# 	    # equal 1 if that feature was selected in selected1, and leave it
+# 	    # as zero otherwise. Likewise with the (2i)th column and selected2.
+# 	    selected_features[selected1, 2*i-1] <- 1
+# 	    selected_features[selected2, 2*i] <- 1
+# 	}
+# 	for(i in 1:(2*B)){
+# 		if(all(selected_features[, i] == 0)){
+# 			print(i)
+# 			print(selected_features[, i])
+# 			stop("all(selected_features[, i] == 0)")
+# 		}
+# 	}
+# 	return(selected_features)
+# }
 
 ##### Implementation of complementary pair sampling using apply function to
 # consider:
@@ -486,18 +486,18 @@ qs_0.51 <- c(1)
 
 ### Lasso stability selection--Shah & Samworth technique
 
-lassoSS <- new_method("lassoSS", "Lasso SS (S&S)",
-	method = function(model, draw, cutoff, pfer) {
-	fit <- stabsel(x=model$x, y=draw, fitfun=glmnet.lasso,
-		cutoff=cutoff, q=q, sampling_type="SS")
-	return(list(selected=fit$selected))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.7, q=10)
-)
+# lassoSS <- new_method("lassoSS", "Lasso SS (S&S)",
+# 	method = function(model, draw, cutoff, pfer) {
+# 	fit <- stabsel(x=model$x, y=draw, fitfun=glmnet.lasso,
+# 		cutoff=cutoff, q=q, sampling_type="SS")
+# 	return(list(selected=fit$selected))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.7, q=10)
+# )
 
 # make_lasso_ss <- function(q) {
 #   	new_method(name = sprintf("lasso_SS%s", q),
@@ -587,60 +587,60 @@ lasso_ss_ps_pars_.7 <- matrix(c(rep(0.7, length(qs)), qs), ncol=2, byrow=F)
 
 list_of_lasso_ps_sss_5_.7 <- make_lasso_ss_columns_ps(lasso_ss_ps_pars_.7)
 
-lassoSS_phat <- new_method("lassoSS_phat", "Lasso SS (S&S) p_hats",
-	method = function(model, draw, cutoff, q, pfer, B) {
-		R <- diag(ncol(model$x))
-	fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
-		cutoff=cutoff, q=q, B=B, sampling_type="SS"
-		, R=R
-		)
-	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-	return(list(phat=fit$feat_sel_props, beta=NA,
-		first_lasso_selected=fit$feat_sel_mat[1, ]))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.7, q=11, B=100)
-)
+# lassoSS_phat <- new_method("lassoSS_phat", "Lasso SS (S&S) p_hats",
+# 	method = function(model, draw, cutoff, q, pfer, B) {
+# 		R <- diag(ncol(model$x))
+# 	fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
+# 		cutoff=cutoff, q=q, B=B, sampling_type="SS"
+# 		, R=R
+# 		)
+# 	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 	return(list(phat=fit$feat_sel_props, beta=NA,
+# 		first_lasso_selected=fit$feat_sel_mat[1, ]))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.7, q=11, B=100)
+# )
 
-SS_SS_random <- new_method("SS_SS_random",
-	"S&S SS (random X)",
-	method = function(model, draw, cutoff, pfer, B) {
-	require(glmnet)
-	R <- diag(ncol(draw$X))
-	n <- nrow(draw$X)
-	if(length(draw$y) != n){
-		stop("length(draw$y) != n")
-	}
-	# Determine q: do lasso with cross-validation on full data sample.
-	# Cross-validated model size will be the size we use for stability
-	# selection.
-	inds_size <- sample(1:n, floor(n/2))
-	X <- draw$X[inds_size, ]
-	y <- draw$y[inds_size]
-	colnames(X) <- character()
-	rownames(X) <- character()
-	names(y) <- character()
-	size_results <- cv.glmnet(x=X, y=y, parallel=TRUE, family="gaussian")
-	rm(X)
-	rm(y)
-	q <- nrow(predict(size_results, s = "lambda.min", type="nonzero"))
-	fit <- stabselGreg(x=draw$X, y=draw$y, fitfun=glmnet.lasso,
-		cutoff=cutoff, q=q, B=B, sampling_type="SS"
-		, R=R
-		)
-	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-	return(list(phat=fit$feat_sel_props, beta=NA,
-		first_lasso_selected=fit$feat_sel_mat[1, ]))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.7, B=100)
-)
+# SS_SS_random <- new_method("SS_SS_random",
+# 	"S&S SS (random X)",
+# 	method = function(model, draw, cutoff, pfer, B) {
+# 	require(glmnet)
+# 	R <- diag(ncol(draw$X))
+# 	n <- nrow(draw$X)
+# 	if(length(draw$y) != n){
+# 		stop("length(draw$y) != n")
+# 	}
+# 	# Determine q: do lasso with cross-validation on full data sample.
+# 	# Cross-validated model size will be the size we use for stability
+# 	# selection.
+# 	inds_size <- sample(1:n, floor(n/2))
+# 	X <- draw$X[inds_size, ]
+# 	y <- draw$y[inds_size]
+# 	colnames(X) <- character()
+# 	rownames(X) <- character()
+# 	names(y) <- character()
+# 	size_results <- cv.glmnet(x=X, y=y, parallel=TRUE, family="gaussian")
+# 	rm(X)
+# 	rm(y)
+# 	q <- nrow(predict(size_results, s = "lambda.min", type="nonzero"))
+# 	fit <- stabselGreg(x=draw$X, y=draw$y, fitfun=glmnet.lasso,
+# 		cutoff=cutoff, q=q, B=B, sampling_type="SS"
+# 		, R=R
+# 		)
+# 	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 	return(list(phat=fit$feat_sel_props, beta=NA,
+# 		first_lasso_selected=fit$feat_sel_mat[1, ]))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.7, B=100)
+# )
 
 SS_SS_cssr <- new_method("SS_SS_cssr", "Stability Selection",
 	method = function(model, draw, B) {
@@ -683,6 +683,172 @@ SS_SS_cssr <- new_method("SS_SS_cssr", "Stability Selection",
 	settings = list(B=100)
 )
 
+#' Provided fitfun implementing the elastic net
+#'
+#' Function used to select features with the lasso on each subsample in cluster
+#' stability selection. Uses glmnet implementation of the lasso.
+#' @param X A design matrix containing the predictors. (In practice this will
+#' be a subsample of the full design matrix provided to css.)
+#' @param y A numeric vector containing the response.
+#' @param lambda Numeric; a named length-2 vector containing nonnegative number the
+#' lasso penalty to use on each subsample and the mixing parameter alpha. (For
+#' now, only one lambda value can be provided to cssElnet; in the future, we
+#' plan to allow for multiple lambda values to be provided to cssElnet, as
+#' described in Faletto and Bien 2022.)
+#' @return An integer vector; the indices of the features selected by the lasso.
+#' @author Gregory Faletto, Jacob Bien
+#' @references Faletto, G., & Bien, J. (2022). Cluster Stability Selection.
+#' \emph{arXiv preprint arXiv:2201.00494}.
+#' \url{https://arxiv.org/abs/2201.00494}. \cr Jerome Friedman, Trevor Hastie,
+#' Robert Tibshirani (2010). Regularization Paths for Generalized Linear Models
+#' via Coordinate Descent. \emph{Journal of Statistical Software}, 33(1), 1-22.
+#' URL \url{https://www.jstatsoft.org/v33/i01/}.
+#' @export
+cssElnet <- function(X, y, lambda){
+    # Check inputs
+
+    # TODO(gregfaletto) allow cssLasso to accept a vector of lambda values rather
+    # than just a single one.
+    checkcssElnetInputs(X, y, lambda)
+
+    n <- nrow(X)
+    p <- ncol(X)
+
+    alpha <- lambda["alpha"]
+    lambda <- lambda["lambda"]
+
+    # Fit a lasso path (full path for speed, per glmnet documentation)
+
+    lasso_model <- glmnet::glmnet(X, y, family="gaussian",
+    	alpha=alpha)
+    stopifnot(all.equal(class(lasso_model), c("elnet", "glmnet")))
+
+    # Get coefficients at desired lambda
+
+    pred <- glmnet::predict.glmnet(lasso_model, type="nonzero",
+        s=lambda, exact=TRUE, newx=X, x=X, y=y, alpha=alpha)
+
+    if(is.null(pred[[1]])){return(integer())}
+
+    stopifnot(is.data.frame(pred))
+    stopifnot(!("try-error" %in% class(pred) | "error" %in% class(pred) |
+        "simpleError" %in% class(pred) | "condition" %in% class(pred)))
+
+    if(length(dim(pred)) == 2){
+        selected_glmnet <- pred[, 1]
+    } else if(length(dim(pred)) == 3){
+        selected_glmnet <- pred[, 1, 1]
+    } else if(length(dim(pred)) == 1){
+        selected_glmnet <- pred
+    } else{
+        stop("length(dim(pred)) not 1, 2, or 3")
+    }
+
+    stopifnot(length(selected_glmnet) >= 1)
+    stopifnot(length(selected_glmnet) <= ncol(X))
+    stopifnot(all(selected_glmnet == round(selected_glmnet)))
+    stopifnot(length(selected_glmnet) == length(unique(selected_glmnet)))
+    selected_glmnet <- as.integer(selected_glmnet)
+
+    selected <- sort(selected_glmnet)
+
+    return(selected)
+}
+
+#' Helper function to confirm that the inputs to cssElnet are as expected. 
+#'
+#' @param X A design matrix containing the predictors. (Note that we don't need
+#' to check X very much, because X will have already been checked by the
+#' function checkCssInputs when it was provided to css.)
+#' @param y A numeric vector containing the response.
+#' @param lambda Numeric; a named length-2 vector containing nonnegative number the
+#' lasso penalty to use on each subsample and the mixing parameter alpha. (For
+#' now, only one lambda value can be provided to cssElnet; in the future, we
+#' plan to allow for multiple lambda values to be provided to cssElnet, as
+#' described in Faletto and Bien 2022.)
+#' @author Gregory Faletto, Jacob Bien
+checkcssElnetInputs <- function(X, y, lambda){
+
+    n <- nrow(X)
+    p <- ncol(X)
+
+    if(!is.numeric(y)){
+        stop("For method cssElnet, y must be a numeric vector.")
+    }
+    if(is.matrix(y)){
+        stop("For method cssElnet, y must be a numeric vector (inputted y was a matrix).")
+    }
+    if(n != length(y)){
+        stop("For method cssElnet, y must be a vector of length equal to nrow(X).")
+    }
+    if(length(unique(y)) <= 1){
+        stop("Subsample with only one unique value of y detected--for method cssElnet, all subsamples of y of size floor(n/2) must have more than one unique value.")
+    }
+    if(!is.numeric(lambda) & !is.integer(lambda)){
+        stop("For method cssElnet, lambda must be a numeric.")
+    }
+    if(any(is.na(lambda))){
+        stop("NA detected in provided lambda input to cssElnet")
+    }
+    if(length(lambda) != 2){
+        stop("For method cssElnet, lambda must be a numeric of length 2.")
+    }
+    if(!identical(names(lambda), c("lambda", "alpha"))){
+    	stop("For method cssElnet, lambda must have names lambda and alpha")
+    }
+    if(lambda["lambda"] < 0){
+        stop("For method cssElnet, lambda must be nonnegative.")
+    }
+    if(lambda["alpha"] > 1 | lambda["alpha"] < 0){
+    	stop("For method cssElnet, alpha must be between 0 and 1.")
+    }
+}
+
+SS_SS_cssr_elnet <- new_method("SS_SS_cssr_elnet", "SS (Elastic Net)",
+	method = function(model, draw, B) {
+	# Original stability selection procedure
+	# Get lambda
+	lambda <- cssr::getLassoLambda(X=draw$X, y=draw$y, lambda_choice="min",
+		alpha=0.5)
+
+	params <- c(lambda, 0.5)
+	names(params) <- c("lambda", "alpha")
+
+	# Don't provide clusters
+	res <- cssr::css(X=draw$X, y=draw$y, lambda=params,
+		num_cores=detectCores() - 1, fitfun=cssElnet)
+
+	# Confirm no clusters in the results
+	stopifnot(ncol(res$clus_sel_mat) == ncol(draw$X))
+
+	model_size <- model$k_unblocked + model$sig_blocks
+	selected <- list()
+	selected_clusts <- list()
+	for(i in 1:model_size){
+		res_i <- cssr::getCssSelections(res, min_num_clusts=i,
+			max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		# Number of clusters should equal number of features for regular
+		# stability selection (each "cluster" should contain a single feature)
+		stopifnot(length(set_i) == length(clusts_i))
+
+		if(length(set_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
+		}
+	}
+	# weighting doesn't matter since no clusters provided--using any weighting
+	# scheme will yield the same results in getCssPreds or getCssSelections
+	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
+		method="sparse", testX=draw$testX, testY=draw$testY,
+		testMu=draw$testMu))
+	},
+	settings = list(B=100)
+)
+
 getPlantSelecData <- function(selec_inds, response_name){
 	X_selec <- snps[selec_inds, ]
 	y_selec <- data_plant[selec_inds, response_name]
@@ -692,6 +858,53 @@ getPlantSelecData <- function(selec_inds, response_name){
 
 	return(list(X=X_selec, y=y_selec))
 }
+
+SS_SS_cssr_elnet_plant <- new_method("SS_SS_cssr_elnet_plant",
+	"SS (Elastic Net)", method = function(model, draw, B) {
+	# Original stability selection procedure
+	# Get X_selec, y_selec
+	data_ret <- getPlantSelecData(draw$selec_inds, model$response_name)
+	X <- data_ret$X
+	y <- data_ret$y
+
+	# Get lambda
+	lambda <- cssr::getLassoLambda(X=X, y=y, lambda_choice="min", alpha=0.5)
+
+	params <- c(lambda, 0.5)
+	names(params) <- c("lambda", "alpha")
+
+	# Don't provide clusters
+	res <- cssr::css(X=X, y=y, lambda=params, num_cores=detectCores() - 1,
+		fitfun=cssElnet)
+
+	# Confirm no clusters in the results
+	stopifnot(ncol(res$clus_sel_mat) == ncol(X))
+
+	selected <- list()
+	selected_clusts <- list()
+	for(i in 1:model$max_model_size){
+		res_i <- cssr::getCssSelections(res, min_num_clusts=i,
+			max_num_clusts=i)
+
+		set_i <- res_i$selected_feats
+		clusts_i <- res_i$selected_clusts
+
+		# Number of clusters should equal number of features for regular
+		# stability selection (each "cluster" should contain a single feature)
+		stopifnot(length(set_i) == length(clusts_i))
+
+		if(length(set_i) == i){
+			selected[[i]] <- set_i
+			selected_clusts[[i]] <- clusts_i
+		}
+	}
+	# weighting doesn't matter since no clusters provided--using any weighting
+	# scheme will yield the same results in getCssPreds or getCssSelections
+	return(list(css_res=res, selected=selected, selected_clusts=selected_clusts,
+		method="sparse", train_inds=draw$train_inds, test_inds=draw$test_inds))
+	},
+	settings = list(B=100)
+)
 
 SS_SS_cssr_plant <- new_method("SS_SS_cssr_plant", "Stability Selection",
 	method = function(model, draw, B) {
@@ -736,153 +949,153 @@ SS_SS_cssr_plant <- new_method("SS_SS_cssr_plant", "Stability Selection",
 	settings = list(B=100)
 )
 
-SS_SS_random_custom <- new_method("SS_SS_random_custom",
-	"S&S SS (random X, custom SS function)",
-	method = function(model, draw, B) {
-	# Original stability selection procedure
-	require(glmnet)
-	R <- diag(ncol(draw$X))
-	n <- nrow(draw$X)
-	if(length(draw$y) != n){
-		stop("length(draw$y) != n")
-	}
-	# Determine q: do lasso with cross-validation on full data sample.
-	# Cross-validated model size will be the size we use for stability
-	# selection.
-	inds_size <- sample(1:n, floor(n/2))
-	X <- draw$X[inds_size, ]
-	y <- draw$y[inds_size]
-	colnames(X) <- character()
-	rownames(X) <- character()
-	names(y) <- character()
-	size_results <- cv.glmnet(x=X, y=y, parallel=TRUE, family="gaussian")
-	rm(X)
-	rm(y)
+# SS_SS_random_custom <- new_method("SS_SS_random_custom",
+# 	"S&S SS (random X, custom SS function)",
+# 	method = function(model, draw, B) {
+# 	# Original stability selection procedure
+# 	require(glmnet)
+# 	R <- diag(ncol(draw$X))
+# 	n <- nrow(draw$X)
+# 	if(length(draw$y) != n){
+# 		stop("length(draw$y) != n")
+# 	}
+# 	# Determine q: do lasso with cross-validation on full data sample.
+# 	# Cross-validated model size will be the size we use for stability
+# 	# selection.
+# 	inds_size <- sample(1:n, floor(n/2))
+# 	X <- draw$X[inds_size, ]
+# 	y <- draw$y[inds_size]
+# 	colnames(X) <- character()
+# 	rownames(X) <- character()
+# 	names(y) <- character()
+# 	size_results <- cv.glmnet(x=X, y=y, parallel=TRUE, family="gaussian")
+# 	rm(X)
+# 	rm(y)
 
-	# Get selection proportions
-	css_results <- css(X=draw$X, y=draw$y, lambda=size_results$lambda.min,
-		B=B, sampling_type="SS")
+# 	# Get selection proportions
+# 	css_results <- css(X=draw$X, y=draw$y, lambda=size_results$lambda.min,
+# 		B=B, sampling_type="SS")
 
-	phat <- colMeans(css_results$feat_sel_mat)
+# 	phat <- colMeans(css_results$feat_sel_mat)
 
-	# Get clusters and sort in decreasing order of selection proportion
-	clus_sel_props <- colMeans(css_results$clus_sel_mat)
-	sel_clusts <- css_results$clusters[names(sort(clus_sel_props, decreasing=TRUE))]
+# 	# Get clusters and sort in decreasing order of selection proportion
+# 	clus_sel_props <- colMeans(css_results$clus_sel_mat)
+# 	sel_clusts <- css_results$clusters[names(sort(clus_sel_props, decreasing=TRUE))]
 
-	selected <- getSelectionPrototypes(css_results, sel_clusts)
+# 	selected <- getSelectionPrototypes(css_results, sel_clusts)
 
-	# fit <- cssWrapper(X=draw$X, y=draw$y, lambda=size_results$lambda.min,
-	# 	B=B, sampling_type="SS")
+# 	# fit <- cssWrapper(X=draw$X, y=draw$y, lambda=size_results$lambda.min,
+# 	# 	B=B, sampling_type="SS")
 
 
-	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-	return(list(phat=phat, beta=NA,
-		first_lasso_selected=css_results$feat_sel_mat[1, ], selected=selected,
-		tied_with_next=getTiedWithNext(names(sel_clusts), clus_sel_props)
-		))
-	# return(list(phat=fit$feat_sel_props, beta=NA,
-	# 	first_lasso_selected=fit$feat_sel_mat[1, ], selected=fit$selected,
-	# 	tied_with_next=getTiedWithNext(names(fit$selected_clusts),
-	# 		fit$clus_sel_props)
-	# 	))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(B=100)
-)
+# 	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 	return(list(phat=phat, beta=NA,
+# 		first_lasso_selected=css_results$feat_sel_mat[1, ], selected=selected,
+# 		tied_with_next=getTiedWithNext(names(sel_clusts), clus_sel_props)
+# 		))
+# 	# return(list(phat=fit$feat_sel_props, beta=NA,
+# 	# 	first_lasso_selected=fit$feat_sel_mat[1, ], selected=fit$selected,
+# 	# 	tied_with_next=getTiedWithNext(names(fit$selected_clusts),
+# 	# 		fit$clus_sel_props)
+# 	# 	))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(B=100)
+# )
 
-lassoMB_phat <- new_method("lassoMB_phat", "Lasso SS (M&B) p_hats",
-	method = function(model, draw, cutoff, q, pfer, B) {
-		R <- diag(ncol(model$x))
-	fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
-		cutoff=cutoff, q=q, B=B, sampling_type="MB"
-		, R=R
-		)
-	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-	return(list(phat=fit$feat_sel_props, beta=NA,
-		first_lasso_selected=fit$feat_sel_mat[1, ]))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.7, q=11, B=100)
-)
+# lassoMB_phat <- new_method("lassoMB_phat", "Lasso SS (M&B) p_hats",
+# 	method = function(model, draw, cutoff, q, pfer, B) {
+# 		R <- diag(ncol(model$x))
+# 	fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
+# 		cutoff=cutoff, q=q, B=B, sampling_type="MB"
+# 		, R=R
+# 		)
+# 	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 	return(list(phat=fit$feat_sel_props, beta=NA,
+# 		first_lasso_selected=fit$feat_sel_mat[1, ]))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.7, q=11, B=100)
+# )
 
-lassoSS_phat_ideal <- new_method("lassoSS_phat_ideal",
-	"Ideal Lasso SS (S&S) p_hats",
-	method = function(model, draw, cutoff, q, pfer, B) {
-		# Set R to exactly reflect actual (known) clusters
-		R <- (model$Sigma !=0)*1
-		# Check if used a model where signal cluster variable was removed; if
-		# so, remove first row and column of Sigma (and therefore R)
-		# print(str(R))
-		# print(str(model$x))
-		# if(ncol(R) > ncol(model$x)){
-		# 	R <- R[2:nrow(R), 2:ncol(R)]
-		# }
-	fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
-		cutoff=cutoff, q=q, B=B, sampling_type="SS"
-		, R=R
-		)
-	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-	return(list(phat=fit$feat_sel_props, beta=NA, R=R, selected=fit$selected))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.52, q=11, B=100)
-)
+# lassoSS_phat_ideal <- new_method("lassoSS_phat_ideal",
+# 	"Ideal Lasso SS (S&S) p_hats",
+# 	method = function(model, draw, cutoff, q, pfer, B) {
+# 		# Set R to exactly reflect actual (known) clusters
+# 		R <- (model$Sigma !=0)*1
+# 		# Check if used a model where signal cluster variable was removed; if
+# 		# so, remove first row and column of Sigma (and therefore R)
+# 		# print(str(R))
+# 		# print(str(model$x))
+# 		# if(ncol(R) > ncol(model$x)){
+# 		# 	R <- R[2:nrow(R), 2:ncol(R)]
+# 		# }
+# 	fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
+# 		cutoff=cutoff, q=q, B=B, sampling_type="SS"
+# 		, R=R
+# 		)
+# 	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 	return(list(phat=fit$feat_sel_props, beta=NA, R=R, selected=fit$selected))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.52, q=11, B=100)
+# )
 
-SS_GSS_random <- new_method("SS_GSS_random",
-	"S&S GSS (random X)",
-	method = function(model, draw, cutoff, pfer, B) {
-	require(glmnet)
-	# Take out first row of Sigma that no longer needs to be there (again, 
-    # assuming one block)
-    if(model$nblocks==1 & model$sig_blocks ==1){
-        Sigma <- model$Sigma[2:nrow(model$Sigma), 2:ncol(model$Sigma)]
-    }
-	# Set R to exactly reflect actual (known) clusters
-	R <- (Sigma !=0)*1
+# SS_GSS_random <- new_method("SS_GSS_random",
+# 	"S&S GSS (random X)",
+# 	method = function(model, draw, cutoff, pfer, B) {
+# 	require(glmnet)
+# 	# Take out first row of Sigma that no longer needs to be there (again, 
+#     # assuming one block)
+#     if(model$nblocks==1 & model$sig_blocks ==1){
+#         Sigma <- model$Sigma[2:nrow(model$Sigma), 2:ncol(model$Sigma)]
+#     }
+# 	# Set R to exactly reflect actual (known) clusters
+# 	R <- (Sigma !=0)*1
 
-	n <- nrow(draw$X)
-	if(length(draw$y) != n){
-		stop("length(draw$y) != n")
-	}
+# 	n <- nrow(draw$X)
+# 	if(length(draw$y) != n){
+# 		stop("length(draw$y) != n")
+# 	}
 
 	
-	# Determine q: do lasso with cross-validation on full data sample.
-	# Cross-validated model size will be the size we use for stability
-	# selection.
-	inds_size <- sample(1:n, floor(n/2))
-	size_results <- cv.glmnet(x=draw$X[inds_size, ], y=draw$y[inds_size],
-		parallel=TRUE, family="gaussian")
-	q <- nrow(predict(size_results, s = "lambda.min", type="nonzero"))
+# 	# Determine q: do lasso with cross-validation on full data sample.
+# 	# Cross-validated model size will be the size we use for stability
+# 	# selection.
+# 	inds_size <- sample(1:n, floor(n/2))
+# 	size_results <- cv.glmnet(x=draw$X[inds_size, ], y=draw$y[inds_size],
+# 		parallel=TRUE, family="gaussian")
+# 	q <- nrow(predict(size_results, s = "lambda.min", type="nonzero"))
 
-	# Check if used a model where signal cluster variable was removed; if
-	# so, remove first row and column of Sigma (and therefore R)
-	# print(str(R))
-	# print(str(model$x))
-	# if(ncol(R) > ncol(model$x)){
-	# 	R <- R[2:nrow(R), 2:ncol(R)]
-	# }
-	fit <- stabselGreg(x=draw$X, y=draw$y, fitfun=glmnet.lasso,
-		cutoff=cutoff, q=q, B=B, sampling_type="SS"
-		, R=R
-		)
-	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-	return(list(phat=fit$feat_sel_props, beta=NA, R=R, selected=fit$selected))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.52, B=100)
-)
+# 	# Check if used a model where signal cluster variable was removed; if
+# 	# so, remove first row and column of Sigma (and therefore R)
+# 	# print(str(R))
+# 	# print(str(model$x))
+# 	# if(ncol(R) > ncol(model$x)){
+# 	# 	R <- R[2:nrow(R), 2:ncol(R)]
+# 	# }
+# 	fit <- stabselGreg(x=draw$X, y=draw$y, fitfun=glmnet.lasso,
+# 		cutoff=cutoff, q=q, B=B, sampling_type="SS"
+# 		, R=R
+# 		)
+# 	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 	return(list(phat=fit$feat_sel_props, beta=NA, R=R, selected=fit$selected))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.52, B=100)
+# )
 
 SS_CSS_sparse_cssr <- new_method("SS_CSS_sparse_cssr",
 	"Sparse Cluster Stability Selection",
@@ -1846,88 +2059,88 @@ lasso_proto <- new_method("lasso_proto",
 	}
 )
 
-lassoMB_phat_ideal <- new_method("lassoMB_phat_ideal",
-	"Ideal Lasso SS (M&B) p_hats",
-	method = function(model, draw, cutoff, q, pfer, B) {
-		# Set R to exactly reflect actual (known) clusters
-		R <- (model$Sigma !=0)*1
-		# Check if used a model where signal cluster variable was removed; if
-		# so, remove first row and column of Sigma (and therefore R)
-		# print(str(R))
-		# print(str(model$x))
-		# if(ncol(R) > ncol(model$x)){
-		# 	R <- R[2:nrow(R), 2:ncol(R)]
-		# }
-	fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
-		cutoff=cutoff, q=q, B=B, sampling_type="MB"
-		, R=R
-		)
-	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-	return(list(phat=fit$feat_sel_props, beta=NA, R=R, selected=fit$selected))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.52, q=11, B=100)
-)
+# lassoMB_phat_ideal <- new_method("lassoMB_phat_ideal",
+# 	"Ideal Lasso SS (M&B) p_hats",
+# 	method = function(model, draw, cutoff, q, pfer, B) {
+# 		# Set R to exactly reflect actual (known) clusters
+# 		R <- (model$Sigma !=0)*1
+# 		# Check if used a model where signal cluster variable was removed; if
+# 		# so, remove first row and column of Sigma (and therefore R)
+# 		# print(str(R))
+# 		# print(str(model$x))
+# 		# if(ncol(R) > ncol(model$x)){
+# 		# 	R <- R[2:nrow(R), 2:ncol(R)]
+# 		# }
+# 	fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
+# 		cutoff=cutoff, q=q, B=B, sampling_type="MB"
+# 		, R=R
+# 		)
+# 	# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 	return(list(phat=fit$feat_sel_props, beta=NA, R=R, selected=fit$selected))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.52, q=11, B=100)
+# )
 
-lassoSS_phat_cor <- new_method("lassoSS_phat_cor",
-	"Corr Lasso SS (S&S) p_hats",
-	method = function(model, draw, cutoff, q, pfer) {
-		# Set R to be the absolute value of the correlation matrix
-		R <- abs(cor(model$x))
-		fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
-			cutoff=cutoff, q=q, B=1000, sampling_type="SS"
-			, R=R
-			)
-		# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-		return(list(phat=fit$feat_sel_props, beta=NA))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.7, q=11)
-)
+# lassoSS_phat_cor <- new_method("lassoSS_phat_cor",
+# 	"Corr Lasso SS (S&S) p_hats",
+# 	method = function(model, draw, cutoff, q, pfer) {
+# 		# Set R to be the absolute value of the correlation matrix
+# 		R <- abs(cor(model$x))
+# 		fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
+# 			cutoff=cutoff, q=q, B=1000, sampling_type="SS"
+# 			, R=R
+# 			)
+# 		# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 		return(list(phat=fit$feat_sel_props, beta=NA))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.7, q=11)
+# )
 
-lassoSS_phat_cor_squared <- new_method("lassoSS_phat_cor_squared",
-	"Corr Sq Lasso SS (S&S) p_hats",
-	method = function(model, draw, cutoff, q, pfer, B) {
-		# Set R to be the square of the correlation matrix
-		R <- cor(model$x)^2
-		fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
-			cutoff=cutoff, q=q, B=B, sampling_type="SS"
-			, R=R
-			)
-		# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-		return(list(phat=fit$feat_sel_props, beta=NA, B=B))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.7, q=11, B=100)
-)
+# lassoSS_phat_cor_squared <- new_method("lassoSS_phat_cor_squared",
+# 	"Corr Sq Lasso SS (S&S) p_hats",
+# 	method = function(model, draw, cutoff, q, pfer, B) {
+# 		# Set R to be the square of the correlation matrix
+# 		R <- cor(model$x)^2
+# 		fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
+# 			cutoff=cutoff, q=q, B=B, sampling_type="SS"
+# 			, R=R
+# 			)
+# 		# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 		return(list(phat=fit$feat_sel_props, beta=NA, B=B))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.7, q=11, B=100)
+# )
 
-lassoMB_phat_cor_squared <- new_method("lassoMB_phat_cor_squared",
-	"Corr Sq Lasso SS (M&B) p_hats",
-	method = function(model, draw, cutoff, q, pfer, B) {
-		# Set R to be the square of the correlation matrix
-		R <- cor(model$x)^2
-		fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
-			cutoff=cutoff, q=q, B=B, sampling_type="MB"
-			, R=R
-			)
-		# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
-		return(list(phat=fit$feat_sel_props, beta=NA))
-	},
-	# Cutoff probability (proportion of time a feature must be selected by base
-	# feature selection method to be included by stability selection) and Per 
-	# family error rate (expected number of false selections) for stability
-	# selection
-	settings = list(cutoff = 0.7, q=11, B=100)
-)
+# lassoMB_phat_cor_squared <- new_method("lassoMB_phat_cor_squared",
+# 	"Corr Sq Lasso SS (M&B) p_hats",
+# 	method = function(model, draw, cutoff, q, pfer, B) {
+# 		# Set R to be the square of the correlation matrix
+# 		R <- cor(model$x)^2
+# 		fit <- stabselGreg(x=model$x, y=draw, fitfun=glmnet.lasso,
+# 			cutoff=cutoff, q=q, B=B, sampling_type="MB"
+# 			, R=R
+# 			)
+# 		# return(list(phat=fit$phat[, ncol(fit$phat)], beta=NA))
+# 		return(list(phat=fit$feat_sel_props, beta=NA))
+# 	},
+# 	# Cutoff probability (proportion of time a feature must be selected by base
+# 	# feature selection method to be included by stability selection) and Per 
+# 	# family error rate (expected number of false selections) for stability
+# 	# selection
+# 	settings = list(cutoff = 0.7, q=11, B=100)
+# )
 
 # #
 
@@ -2076,33 +2289,33 @@ elastic_net_plant <- new_method("elastic_net_plant", "Elastic Net",
 
 ### Lasso of size 2
 
-lasso2 <- new_method("lasso2", "Lasso2",
-	method = function(model, draw) {
-		require(purrr)
-		require(glmnet)
-		# get correlation matrix
-		cor_mat <- cor(cbind(model$x, draw))
-		n_lambda <- ncol(model$x)*10
-		while(n_lambda > 0){
-			fit <- glmnet(x=model$x, y=draw, family="gaussian",
-				nlambda=n_lambda, alpha=1)
-			selected_sets <- unique(predict(fit, type="nonzero")) %>%
-				discard(is.null)
-			for(i in 1:length(selected_sets)){
-				if(length(selected_sets[[i]]) == 2){
-					# print("selected:")
-					# print(selected_sets[[i]])
-					# print("correlation matrix:")
-					# print(cor_mat)
-					return(list(selected=selected_sets[[i]], cor_mat=cor_mat))
-				}
-			}
-		# if wasn't able to return a value, try again with bigger n_lambda
-		n_lambda <- n_lambda*10
-		}
+# lasso2 <- new_method("lasso2", "Lasso2",
+# 	method = function(model, draw) {
+# 		require(purrr)
+# 		require(glmnet)
+# 		# get correlation matrix
+# 		cor_mat <- cor(cbind(model$x, draw))
+# 		n_lambda <- ncol(model$x)*10
+# 		while(n_lambda > 0){
+# 			fit <- glmnet(x=model$x, y=draw, family="gaussian",
+# 				nlambda=n_lambda, alpha=1)
+# 			selected_sets <- unique(predict(fit, type="nonzero")) %>%
+# 				discard(is.null)
+# 			for(i in 1:length(selected_sets)){
+# 				if(length(selected_sets[[i]]) == 2){
+# 					# print("selected:")
+# 					# print(selected_sets[[i]])
+# 					# print("correlation matrix:")
+# 					# print(cor_mat)
+# 					return(list(selected=selected_sets[[i]], cor_mat=cor_mat))
+# 				}
+# 			}
+# 		# if wasn't able to return a value, try again with bigger n_lambda
+# 		n_lambda <- n_lambda*10
+# 		}
 		
-	}
-)
+# 	}
+# )
 
 # Lasso fit on sample of size floor(n/2)
 
