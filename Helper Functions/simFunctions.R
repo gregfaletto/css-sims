@@ -73,32 +73,6 @@ genIndicesNoTest <- function(n, n_selec){
     return(list(selec_indices, train_indices))
 }
 
-# createLossesPlot3 <- function(losses, j_choices, coarseness=1){
-#     if(any(losses[complete.cases(losses), ] < 0)){
-#         stop("any(losses[complete.cases(losses), ] < 0)")
-#     }
-#     if(!all(j_choices %in% 1:nrow(losses))){
-#         stop("!all(j_choices %in% 1:nrow(losses))")
-#     }
-
-#     losses <- losses[j_choices, ]
-#     if(!all(complete.cases(losses))){
-#         stop("!all(complete.cases(losses))")
-#     }
-
-#     losses_vec <- c(losses[, 1], losses[, 2], losses[, 3])
-
-#     df_gg <- data.frame(rep(j_choices, 3), losses_vec, rep(colnames(losses),
-#     	each=length(j_choices)))
-
-#     colnames(df_gg) <- c("Model_Size", "MSE", "Method")
-
-#     plot <- ggplot(df_gg, aes(x=Model_Size, y=MSE, color=Method,
-#         shape=Method)) + geom_point(size=2.5, alpha=1)+ xlab("Model Size")
-
-#     return(plot)
-# }
-
 makeDfMethodsDisplay <- function(df){
     # Takes in data.frame with computer-friendly labels and returns 
     # data.frame with display-friendly labels
@@ -1686,86 +1660,6 @@ getErrorDf3 <- function(losses, names, j_choices_mat, p_max_plots, J,
     df_gg <- makeDfMethodsDisplay3(df_gg)
 
     return(df_gg)
-}
-
-createLossesPlot3 <- function(losses, names, j_choices_mat, p_max_plots=NA,
-    J=NA, legend=TRUE, coarseness=1){
-    n_methods <- length(names)
-    n_draws <- ncol(losses)
-
-    # If J is not provided, figure out on own
-    if(length(J) != 1){
-        stop("length(J) != 1")
-    }
-    if(is.na(J)){
-        J <- nrow(losses)/n_methods
-    }
-    if(J != round(J)){
-        print(nrow(losses))
-        print(n_methods)
-        print(J)
-        stop("J != round(J)")
-    }
-    if(!is.na(p_max_plots)){
-        if(p_max_plots/coarseness != round(p_max_plots/coarseness)){
-            stop("p_max_plots/coarseness != round(p_max_plots/coarseness)")
-        }
-
-    } else{
-        if(J/coarseness != round(J/coarseness)){
-            stop("J/coarseness != round(J/coarseness)")
-        }
-    }
-    if(any(losses < 0)){
-        stop("any(losses < 0)")
-    }
-    if(n_draws != ncol(j_choices_mat) | nrow(losses) != nrow(j_choices_mat)){
-        print(dim(losses))
-        print(dim(j_choices_mat))
-        stop("ncol(losses) != ncol(j_choices_mat) | nrow(losses) != nrow(j_choices_mat)")
-    }
-
-    if(length(p_max_plots) != 1){
-        stop("length(p_max_plots) != 1")
-    }
-
-    df_gg <- getErrorDf3(losses, names, j_choices_mat, p_max_plots, J,
-        coarseness)
-
-    # print("head(df_gg):")
-    # print(head(df_gg))
-
-    # print("summary(df_gg):")
-    # print(summary(df_gg))
-
-    # print("str(df_gg):")
-    # print(str(df_gg))
-
-    # print("unique(df_gg$Method):")
-    # print(unique(df_gg$Method))
-
-    # Get max ranking value for integer labels on horizontal axis
-    max_rank <- max(df_gg$Model_Size)
-    if((max_rank %% 2) != 0){
-        max_rank <- max_rank + 1
-    }
-
-    # print("max_rank:")
-    # print(max_rank)
-
-    plot <- ggplot(df_gg, aes(x=Model_Size, y=MSE, color=Method,
-        shape=Method)) + scale_shape_manual(values=1:n_methods) + 
-        # geom_point() +
-        geom_point(size=2.5, alpha=1) +
-        xlab("No. Fitted Coefficients")+
-        ylim(0.03, .05)
-        # + scale_x_continuous(breaks=seq(2, max_rank, by=2))
-
-    if(!legend){
-        plot <- plot + theme(legend.position="none")
-    }
-
-    return(plot)
 }
 
 makeDfMethodsDisplay3 <- function(df){

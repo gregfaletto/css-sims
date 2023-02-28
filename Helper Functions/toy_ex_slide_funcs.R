@@ -4666,7 +4666,8 @@ getBinMat <- function(output, meth, model_sizes, num_sims, p_feat){
 
 
 createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
-    plot_errors=TRUE, subtitle=FALSE, max_model_size, log_mse=FALSE){
+    plot_errors=TRUE, subtitle=FALSE, max_model_size, log_mse=FALSE,
+    break_by=2){
 
     if(max_model_size %% 2 == 0){
         max_rank <- max_model_size
@@ -4678,7 +4679,7 @@ createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
         shape=Method)) + scale_shape_manual(values=1:n_methods) +
         suppressWarnings(geom_point(size=2.5, alpha=1)) + 
         xlab("No. Fitted Coefficients") +
-        scale_x_continuous(breaks=seq(2, max_rank, by=2))
+        scale_x_continuous(breaks=seq(break_by, max_rank, by=break_by))
 
     if(subtitle){
         subtitle_txt <- paste("n = ", n_model, ", p = ", p, ",
@@ -4703,7 +4704,7 @@ createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
 }
 
 createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE, 
-    subtitle=FALSE){
+    subtitle=FALSE, break_by=2){
     require(ggplot2)
     
     # Get max ranking value for integer labels on horizontal axis
@@ -4722,7 +4723,7 @@ createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE,
 
     plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1)) +
         xlab("No. Fitted Coefficients") + ylab("NSB Stability") +
-        scale_x_continuous(breaks=seq(2, max_rank, by=2))
+        scale_x_continuous(breaks=seq(break_by, max_rank, by=break_by))
 
     if(subtitle){
         plot <- plot + labs(subtitle=subtitle_txt)

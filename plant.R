@@ -277,11 +277,11 @@ n_methods <- results$n_methods
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_plant", "elastic_net_plant",
     	"lasso_random_plant"))), ], n_methods - 3, plot_errors=FALSE,
-	max_model_size=p_max, log_mse=TRUE)
+	max_model_size=p_max, log_mse=TRUE, break_by=2*coarseness)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_plant", "elastic_net_plant",
-    	"lasso_random_plant"))), ], plot_errors=FALSE)
+    	"lasso_random_plant"))), ], plot_errors=FALSE, break_by=2*coarseness)
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_plant", "elastic_net_plant",
@@ -317,12 +317,13 @@ saveFigure2(subdir="figures", plot=fig_4, size="large",
 ### Versions of Figure 4 plots with all methods (for supplement)
 
 fig_4_supp_left <- createLossesPlot3(results_df, n_methods,
-	plot_errors=FALSE, max_model_size=p_max, log_mse=TRUE)
+	plot_errors=FALSE, max_model_size=p_max, log_mse=TRUE, break_by=coarseness)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
     filename="real_data_mse_supp.pdf")
 
-fig_4_supp_mid <- createNSBStabPlot2(results_df, plot_errors=FALSE)
+fig_4_supp_mid <- createNSBStabPlot2(results_df, plot_errors=FALSE,
+	break_by=coarseness)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
     filename="real_data_stab_supp.pdf")
