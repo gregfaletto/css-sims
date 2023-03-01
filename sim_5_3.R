@@ -298,7 +298,7 @@ if(run_new_sim){
         save_simulation(gss_random_weighted_custom)
 
         gss_random_weighted_custom <- evaluate(gss_random_weighted_custom,
-            list(cssr_mse))
+            list(cssr_mse, cssr_opt_weights))
     }
 
 

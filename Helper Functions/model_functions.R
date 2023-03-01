@@ -719,7 +719,8 @@ random_simulate_func_weighted <- function(n, n_clus, n_test, p, k_unblocked,
         # in the model generation and then use the results in different
         # ways depending on the method
         res_known <- getRes(gen_mu_x_y_sd_res$X, gen_mu_x_y_sd_res$y,
-            clusters=1:block_size, nblocks=nblocks, sig_blocks=sig_blocks)
+            clusters=list(Z_clust=1:block_size), nblocks=nblocks,
+            sig_blocks=sig_blocks)
 
         # Confirm cluster in the results
         stopifnot(ncol(res_known$clus_sel_mat) == p - block_size + 1)
@@ -1013,7 +1014,8 @@ random_simulate_func_ranking2 <- function(n, n_clus, n_test, p, k_unblocked,
         # in the model generation and then use the results in different
         # ways depending on the method
         res_known <- getRes(gen_mu_x_y_sd_res$X, gen_mu_x_y_sd_res$y,
-            clusters=1:block_size, nblocks=nblocks, sig_blocks=sig_blocks)
+            clusters=list(Z_clust=1:block_size), nblocks=nblocks,
+            sig_blocks=sig_blocks)
 
         # Confirm cluster in the results
         stopifnot(ncol(res_known$clus_sel_mat) == p - block_size + 1)

@@ -1158,7 +1158,7 @@ SS_CSS_sparse_cssr_est <- new_method("SS_CSS_sparse_cssr_est",
 	}
 
 	return(list(css_res=draw$res_est, selected=selected,
-		selected_clusts=selected_clusts, weights=weights, method="sparse",
+		selected_clusts=selected_clusts, method="sparse",
 		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},
@@ -1402,7 +1402,7 @@ SS_CSS_weighted_cssr_est <- new_method("SS_CSS_weighted_cssr_est",
 	}
 
 	return(list(css_res=draw$res_est, selected=selected,
-		selected_clusts=selected_clusts, weights=weights,
+		selected_clusts=selected_clusts,
 		method="weighted_avg", testX=draw$testX, testY=draw$testY,
 		testMu=draw$testMu))
 
@@ -1688,7 +1688,7 @@ SS_CSS_avg_cssr_est <- new_method("SS_CSS_avg_cssr_est",
 	}
 
 	return(list(css_res=draw$res_est, selected=selected,
-		selected_clusts=selected_clusts, weights=weights, method="simple_avg",
+		selected_clusts=selected_clusts, method="simple_avg",
 		testX=draw$testX, testY=draw$testY, testMu=draw$testMu))
 
 	},

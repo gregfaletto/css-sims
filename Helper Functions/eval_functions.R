@@ -249,6 +249,52 @@ cssr_mse <- new_metric("cssr_mse", "MSE", metric = function(model, out) {
      }
 )
 
+cssr_opt_weights <- new_metric("cssr_opt_weights", "MSE of weights",
+     metric = function(model, out) {
+          out_names <- names(out)
+
+          if("weights" %in% out_names){
+               # Estimated weights for z cluster
+               stopifnot("Z_clust" %in% names(out$weights))
+               est_weights <- out$weights$Z_clust
+               stopifnot(length(est_weights) == model$block_size)
+
+               # Find optimal weights
+               if(rho_high %in% names(model)){
+                    num_low_noise <- model$n_strong_block_vars
+                    num_high_noise <- model$block_size - num_low_noise
+
+                    low_noise_var <- cssr::getNoiseVar(model$rho_high)
+                    high_noise_var <- cssr::getNoiseVar(model$rho_low)
+
+                    opt_weights <- 1/c(rep(low_noise_var, num_low_noise),
+                         rep(high_noise_var, num_high_noise))
+                    opt_weights <- opt_weights/sum(opt_weights)
+
+               } else{
+                    stopifnot(rho %in% names(model))
+                    # Variancers are all equal, so optimal weights are equal
+                    opt_weights <- rep(1/model$block_size, model$block_size)
+               }
+
+               stopifnot(length(opt_weights) == model$block_size)
+               stopifnot(all(opt_weights > 0))
+               stopifnot(all(opt_weights < 1))
+               stopifnot(abs(sum(opt_weights) - 1) < 10^(-6))
+               
+               # Calculate MSE
+               return(mean((est_weights - opt_weights)^2))
+
+
+          } else{
+               return(NA)
+          }
+
+          # Shouldn't be possible to reach this point
+          stop("Error: no method for evaluating MSE of this method found")
+     }
+)
+
 cssr_mse_plant <- new_metric("cssr_mse_plant", "MSE", metric = function(model,
      out) {
           # Get X_train, y_train, X_test, y_test
@@ -510,6 +556,8 @@ clus_lasso_metric_func_plant <- function(out, model, X_train, y_train, X_test,
      }
      return(mses)
 }
+
+
 
 
 

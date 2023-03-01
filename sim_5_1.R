@@ -309,7 +309,7 @@ if(run_new_sim){
         ))
 
         gss_random_ranking_custom_test0 <- gss_random_ranking_custom_test0 %>%
-            evaluate(list(cssr_mse))
+            evaluate(list(cssr_mse, cssr_opt_weights))
             # evaluate(list(phat, labels))
     }
 
