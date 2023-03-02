@@ -249,42 +249,90 @@ cssr_mse <- new_metric("cssr_mse", "MSE", metric = function(model, out) {
      }
 )
 
+get_weights_mse <- function(model, all_weights){
+     # Estimated weights for z cluster
+     print("all_weights:")
+     print(all_weights)
+     # print("names(all_weights):")
+     # print(names(all_weights))
+     # stopifnot("Z_clust" %in% names(all_weights))
+     est_weights <- all_weights$Z_clust
+     stopifnot(length(est_weights) == model$block_size)
+
+     print("names(model@params):")
+     print(names(model@params))
+
+     print("model$n_strong_block_vars:")
+     print(model$n_strong_block_vars)
+
+     # Find optimal weights
+     if("rho_high" %in% names(model@params)){
+          num_low_noise <- model$n_strong_block_vars
+          num_high_noise <- model$block_size - num_low_noise
+
+          low_noise_var <- cssr::getNoiseVar(model$rho_high)
+          high_noise_var <- cssr::getNoiseVar(model$rho_low)
+
+          opt_weights <- 1/c(rep(low_noise_var, num_low_noise),
+               rep(high_noise_var, num_high_noise))
+          opt_weights <- opt_weights/sum(opt_weights)
+
+     } else{
+          stopifnot("rho" %in% names(model@params))
+          # Variancers are all equal, so optimal weights are equal
+          opt_weights <- rep(1/model$block_size, model$block_size)
+     }
+
+     stopifnot(length(opt_weights) == model$block_size)
+     stopifnot(all(opt_weights > 0))
+     stopifnot(all(opt_weights < 1))
+     stopifnot(abs(sum(opt_weights) - 1) < 10^(-6))
+     
+     # Calculate MSE
+     return(mean((est_weights - opt_weights)^2))
+}
+
 cssr_opt_weights <- new_metric("cssr_opt_weights", "MSE of weights",
      metric = function(model, out) {
           out_names <- names(out)
 
+
+          max_model_size <- model$sig_blocks + model$k_unblocked
+          weights_mses <- rep(as.numeric(NA), max_model_size)
+
           if("weights" %in% out_names){
-               # Estimated weights for z cluster
-               stopifnot("Z_clust" %in% names(out$weights))
-               est_weights <- out$weights$Z_clust
-               stopifnot(length(est_weights) == model$block_size)
 
-               # Find optimal weights
-               if(rho_high %in% names(model)){
-                    num_low_noise <- model$n_strong_block_vars
-                    num_high_noise <- model$block_size - num_low_noise
+               # print("1: names(model):")
+               # print(names(model))
+               # print("str(model):")
+               # print(str(model))
+               # print("model:")
+               # print(model)
 
-                    low_noise_var <- cssr::getNoiseVar(model$rho_high)
-                    high_noise_var <- cssr::getNoiseVar(model$rho_low)
+               n_sets <- length(out$weights)
 
-                    opt_weights <- 1/c(rep(low_noise_var, num_low_noise),
-                         rep(high_noise_var, num_high_noise))
-                    opt_weights <- opt_weights/sum(opt_weights)
-
-               } else{
-                    stopifnot(rho %in% names(model))
-                    # Variancers are all equal, so optimal weights are equal
-                    opt_weights <- rep(1/model$block_size, model$block_size)
+               if(n_sets == 0){
+                    return(NA)
                }
 
-               stopifnot(length(opt_weights) == model$block_size)
-               stopifnot(all(opt_weights > 0))
-               stopifnot(all(opt_weights < 1))
-               stopifnot(abs(sum(opt_weights) - 1) < 10^(-6))
-               
-               # Calculate MSE
-               return(mean((est_weights - opt_weights)^2))
-
+               stopifnot(n_sets <= max_model_size)
+               stopifnot(length(out$weights) >= n_sets)
+               for(i in 1:n_sets){
+                    # Check if a selected set of size i was defined to exist--if not, skip
+                    # this model size
+                    if(!is.null(out$selected[[i]])){
+                         stopifnot(length(out$weights[[i]]) == i)
+                         # Calculate weights MSE
+                         weights_mses[i] <- get_weights_mse(model,
+                              out$weights[[i]])
+                    }
+               }
+               if(all(is.na(weights_mses))){
+                    return(NA)
+               }
+               weights_mses <- weights_mses[!is.na(weights_mses)]
+               stopifnot(length(unique(weights_mses)) == 1)
+               return(unique(weights_mses))
 
           } else{
                return(NA)

@@ -1043,9 +1043,31 @@ getRes <- function(X, y, clusters, nblocks, sig_blocks){
     return(res)
 }
 
+cosineSim <- function(mat){
+    p <- ncol(mat)
+    ret <- matrix(0, p, p)
+    
+    for(i in 2:p){
+        for(j in 1:(i - 1)){
+            num_ij <- as.numeric(crossprod(mat[, i], mat[, j]))
+            denom_ij <- sqrt(sum((mat[, i])^2)*sum((mat[, j])^2))
+            stopifnot(abs(num_ij) <= denom_ij)
+            ret[i, j] <- num_ij/denom_ij
+        }
+    }
+    ret <- ret + t(ret)
+    diag(ret) <- 1
+
+    stopifnot(all(ret >= -1))
+    stopifnot(all(ret <= 1))
+
+    return(ret)
+
+}
+
 clustEsts <- function(X){
     # Estimate clusters on clus_data
-    cor_mat <- stats::cor(X)
+    cor_mat <- cosineSim(X)
     dist <- stats::as.dist(1 - abs(cor_mat))
     h <- stats::hclust(dist)
 

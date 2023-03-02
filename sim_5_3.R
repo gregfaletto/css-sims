@@ -81,7 +81,7 @@ setwd(wd)
 ###############################################
 
 # Run simulation, or load simulation that has been previously run?
-run_new_sim <- FALSE
+run_new_sim <- TRUE
 # Titles on p_hat plots?
 p_hat_titles <- TRUE
 # legends on mse/false selection/proxy selection plots
@@ -105,18 +105,18 @@ n_clus <- 200
 # Cutoff for absolute correlation for estimated clusters
 est_clus_cutoff <- 0.5
 n_test <- 1000
-n_sims <- 2000
-# n_sims <- 10
+n_sims <- 400
+# n_sims <- 3
 # p <- 50
 p <- 100
 nblocks <- 1
 sig_blocks <- 1
-k_unblocked <- 12
+k_unblocked <- 10
 beta_low <- 1
 # beta_high <- 2
 beta_high <- 1.5
-block_size <- 6
-n_strong_block_vars <- 2
+block_size <- 9
+n_strong_block_vars <- 3
 rho_high <- 0.9
 rho_low <- 0.6
 var <- 1
@@ -322,17 +322,17 @@ n_methods <- results$n_methods
 ### Figure 4 (previously Figure 5) (known clusters)
 
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "lasso_random", "elastic_net",
+    nameMap(c("SS_CSS_sparse_cssr", "SS_SS_cssr_elnet", "elastic_net",
         est_cluster_meths))), ],
     n_methods - 3 - length(est_cluster_meths), max_model_size=sig_blocks +
     k_unblocked)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "lasso_random", "elastic_net",
+    nameMap(c("SS_CSS_sparse_cssr", "SS_SS_cssr_elnet", "elastic_net",
         est_cluster_meths))), ])
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "lasso_random", "elastic_net",
+    nameMap(c("SS_CSS_sparse_cssr", "SS_SS_cssr_elnet", "elastic_net",
         est_cluster_meths))), ],
     n_methods - 3 - length(est_cluster_meths))
 
@@ -387,16 +387,16 @@ saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
 ### Figure 4 (previously Figure 5) (estimated clusters)
 
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr_est", "lasso_random", "elastic_net",
+    nameMap(c("SS_CSS_sparse_cssr_est", "SS_SS_cssr_elnet", "elastic_net",
         known_cluster_meths))), ], n_methods - 3 - length(known_cluster_meths),
     max_model_size=sig_blocks + k_unblocked)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr_est", "lasso_random", "elastic_net",
+    nameMap(c("SS_CSS_sparse_cssr_est", "SS_SS_cssr_elnet", "elastic_net",
         known_cluster_meths))), ])
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr_est", "lasso_random", "elastic_net",
+    nameMap(c("SS_CSS_sparse_cssr_est", "SS_SS_cssr_elnet", "elastic_net",
         known_cluster_meths))), ], n_methods - 3 - length(known_cluster_meths))
 
 # 2. Save the legend
@@ -444,6 +444,14 @@ fig_4_supp_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
 
 saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
     filename="sim_2_est_mse_stab_supp.pdf")
+
+weights_plot <- subset_simulation(gss_random_weighted_custom,
+    methods=c("SS_CSS_sparse_cssr", "SS_CSS_weighted_cssr",
+        "SS_CSS_avg_cssr")) |> plot_eval("cssr_opt_weights") +
+    ggtitle("MSEs of Estimated Weights")
+
+saveFigure2(subdir="figures", plot=weights_plot, size="xmlarge",
+    filename="sim_5_3_weights_mse.pdf")
 
 print("Total time:")
 print(Sys.time() - t0)

@@ -4601,8 +4601,7 @@ getBinMat <- function(output, meth, model_sizes, num_sims, p_feat){
         cssr_meth <- FALSE
         # Only need models of size model_sizes from method meth
         if(meth %in% c("elastic_net", "elastic_net_plant", "lasso_random",
-            "lasso_random_plant", "SS_SS_cssr_elnet",
-            "SS_SS_cssr_elnet_plant")){
+            "lasso_random_plant")){
             feat_list <- output_j$lasso_selected
         } else if(meth %in% c("clusRepLasso_cssr", "clusRepLasso_cssr_est",
             "clusRepLasso_cssr_plant")){
@@ -4614,7 +4613,8 @@ getBinMat <- function(output, meth, model_sizes, num_sims, p_feat){
             "SS_CSS_weighted_cssr", "SS_CSS_avg_cssr_est",
             "SS_CSS_sparse_cssr_est", "SS_CSS_weighted_cssr_est",
             "SS_SS_cssr", "SS_SS_cssr_plant", "SS_CSS_sparse_cssr_plant",
-            "SS_CSS_weighted_cssr_plant", "SS_CSS_avg_cssr_plant")){
+            "SS_CSS_weighted_cssr_plant", "SS_CSS_avg_cssr_plant",
+            "SS_SS_cssr_elnet", "SS_SS_cssr_elnet_plant")){
             feat_list <- output_j$selected
             cssr_meth <- TRUE
         } else{
