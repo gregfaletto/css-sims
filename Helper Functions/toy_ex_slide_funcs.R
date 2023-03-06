@@ -2145,6 +2145,7 @@ calcNSBStabNone <- function(sel_mat, n_sims=NA, calc_errors=FALSE, conf=0.95,
     # Check inputs
     checkNSBStabInputsNone(sel_mat, n_sims, calc_errors, conf, coarseness)
     p <- ncol(sel_mat)
+    stopifnot(p >= 2)
     
     if(all(sel_mat == 0)){
         return(NA)
@@ -2164,13 +2165,19 @@ calcNSBStabNone <- function(sel_mat, n_sims=NA, calc_errors=FALSE, conf=0.95,
     stopifnot(ncol(sel_mat_nonzero) == p)
     stopifnot(M == nrow(sel_mat_nonzero))
 
-    # Calculate s_f_squared values
+    # Calculate s_f_squared values (see Def. 4 on p. 13 of Nogueira et. al
+    # (2018))
     p_hat <- colMeans(sel_mat_nonzero)
+    stopifnot(all(p_hat >= 0))
     s_f_squared <- apply(sel_mat_nonzero, 2,
         function(x){M/(M-1)*mean(x)*(1-mean(x))})
     stopifnot(all.equal(s_f_squared, M/(M-1)*p_hat*(1-p_hat)))
+    stopifnot(all(s_f_squared >= 0))
     k <- rowSums(sel_mat_nonzero)
     k_bar <- mean(k)
+    stopifnot(k_bar >= 0)
+    stopifnot(k_bar <= p)
+    stopifnot(length(k_bar) == 1)
 
     stat <- 1 - mean(s_f_squared)/(k_bar/p*(1 - k_bar/p))
 
