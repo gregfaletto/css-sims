@@ -5095,5 +5095,5 @@ genPlotDfPlant <- function(completed_sim, coarseness){
     results_df <- data.frame(ModelSize=mean_model_sizes, Method=methods_vec,
         MSE=mses, NSBStability=nsbstabs)
 
-    return(list(results_df=results_df, n_methods=n_methods))
+    return(list(results_df=results_df, n_methods=n_methods, eval_df=edf))
 }

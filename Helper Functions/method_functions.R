@@ -1174,20 +1174,30 @@ SS_CSS_sparse_cssr_plant <- new_method("SS_CSS_sparse_cssr_plant",
 	selected_clusts <- list()
 	weights <- list()
 
+	n_clusters <- length(draw$res_est$clusters)
+
 	for(i in 1:model$max_model_size){
-		res_i <- cssr::getCssSelections(draw$res_est, weighting="sparse",
-			min_num_clusts=i, max_num_clusts=i)
 
-		set_i <- res_i$selected_feats
-		clusts_i <- res_i$selected_clusts
-		weights_i <- res_i$weights
+		if(i <= n_clusters){
 
-		stopifnot(length(clusts_i) <= length(set_i))
-		
-		if(length(clusts_i) == i){
-			selected[[i]] <- set_i
-			selected_clusts[[i]] <- clusts_i
-			weights[[i]] <- weights_i
+			res_i <- cssr::getCssSelections(draw$res_est, weighting="sparse",
+				min_num_clusts=i, max_num_clusts=i)
+
+			set_i <- res_i$selected_feats
+			clusts_i <- res_i$selected_clusts
+			weights_i <- res_i$weights
+
+			stopifnot(length(clusts_i) <= length(set_i))
+			
+			if(length(clusts_i) == i){
+				selected[[i]] <- set_i
+				selected_clusts[[i]] <- clusts_i
+				weights[[i]] <- weights_i
+			}
+		} else{
+			selected[[i]] <- NULL
+			selected_clusts[[i]] <- NULL
+			weights[[i]] <- NULL
 		}
 	}
 
@@ -1419,21 +1429,31 @@ SS_CSS_weighted_cssr_plant <- new_method("SS_CSS_weighted_cssr_plant",
 	selected_clusts <- list()
 	weights <- list()
 
+	n_clusters <- length(draw$res_est$clusters)
+
 	for(i in 1:model$max_model_size){
-		res_i <- cssr::getCssSelections(draw$res_est, weighting="weighted_avg",
-			min_num_clusts=i, max_num_clusts=i)
 
-		set_i <- res_i$selected_feats
-		clusts_i <- res_i$selected_clusts
-		weights_i <- res_i$weights
+		if(i <= n_clusters){
+			res_i <- cssr::getCssSelections(draw$res_est, weighting="weighted_avg",
+				min_num_clusts=i, max_num_clusts=i)
 
-		stopifnot(length(clusts_i) <= length(set_i))
-		
-		if(length(clusts_i) == i){
-			selected[[i]] <- set_i
-			selected_clusts[[i]] <- clusts_i
-			weights[[i]] <- weights_i
+			set_i <- res_i$selected_feats
+			clusts_i <- res_i$selected_clusts
+			weights_i <- res_i$weights
+
+			stopifnot(length(clusts_i) <= length(set_i))
+			
+			if(length(clusts_i) == i){
+				selected[[i]] <- set_i
+				selected_clusts[[i]] <- clusts_i
+				weights[[i]] <- weights_i
+			}
+		} else{
+			selected[[i]] <- NULL
+			selected_clusts[[i]] <- NULL
+			weights[[i]] <- NULL
 		}
+
 	}
 
 	return(list(css_res=draw$res_est, selected=selected,
@@ -1704,20 +1724,30 @@ SS_CSS_avg_cssr_plant <- new_method("SS_CSS_avg_cssr_plant",
 	selected_clusts <- list()
 	weights <- list()
 
+	n_clusters <- length(draw$res_est$clusters)
+
 	for(i in 1:model$max_model_size){
-		res_i <- cssr::getCssSelections(draw$res_est, weighting="simple_avg",
-			min_num_clusts=i, max_num_clusts=i)
 
-		set_i <- res_i$selected_feats
-		clusts_i <- res_i$selected_clusts
-		weights_i <- res_i$weights
+		if(i <= n_clusters){
 
-		stopifnot(length(clusts_i) <= length(set_i))
-		
-		if(length(clusts_i) == i){
-			selected[[i]] <- set_i
-			selected_clusts[[i]] <- clusts_i
-			weights[[i]] <- weights_i
+			res_i <- cssr::getCssSelections(draw$res_est, weighting="simple_avg",
+				min_num_clusts=i, max_num_clusts=i)
+
+			set_i <- res_i$selected_feats
+			clusts_i <- res_i$selected_clusts
+			weights_i <- res_i$weights
+
+			stopifnot(length(clusts_i) <= length(set_i))
+			
+			if(length(clusts_i) == i){
+				selected[[i]] <- set_i
+				selected_clusts[[i]] <- clusts_i
+				weights[[i]] <- weights_i
+			}
+		} else{
+			selected[[i]] <- NULL
+			selected_clusts[[i]] <- NULL
+			weights[[i]] <- NULL
 		}
 	}
 
