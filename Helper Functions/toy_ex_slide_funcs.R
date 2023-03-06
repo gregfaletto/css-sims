@@ -4991,7 +4991,7 @@ genPlotDf <- function(completed_sim, alpha=0.05){
         MSELower=mses - margins, MSEUpper=mses + margins, NSBStability=nsbstabs,
         StabLower=nsb_lowers, StabUpper=nsb_uppers)
 
-    return(list(results_df=results_df, n_methods=n_methods))
+    return(list(results_df=results_df, n_methods=n_methods, eval_df=edf))
 }
 
 genPlotDfPlant <- function(completed_sim, coarseness){
@@ -5096,4 +5096,146 @@ genPlotDfPlant <- function(completed_sim, coarseness){
         MSE=mses, NSBStability=nsbstabs)
 
     return(list(results_df=results_df, n_methods=n_methods, eval_df=edf))
+# <<<<<<< Updated upstream
+# =======
+}
+
+df_sim_stats <- function(e_df, max_model_size,
+    css_meth="SS_CSS_weighted_cssr", methods_to_compare=c("SS_SS_cssr",
+    "clusRepLasso_cssr", "protolasso_cssr", "lasso_random", "SS_CSS_avg_cssr")){
+
+    require(dplyr)
+  
+    metric <- "cssr_mse"
+
+    stopifnot(metric %in% colnames(e_df))
+
+    method_names <- unique(e_df$Method)
+
+    stopifnot(css_meth %in% method_names)
+    stopifnot(all(methods_to_compare %in% method_names))
+    stopifnot(!(css_meth %in% methods_to_compare))
+
+    draws <- unique(e_df$Draw)
+    stopifnot(length(draws) == n_sims)
+    css_meth_mse_means <- rep(as.numeric(NA), max_model_size)
+    css_meth_mse_ses <- rep(as.numeric(NA), max_model_size)
+    css_meth_mses <- matrix(as.numeric(NA), nrow=max_model_size, ncol=n_sims)
+
+    e_df_css_meth <- e_df[e_df$Method == css_meth, ]
+    e_df_css_meth <- e_df_css_meth |> dplyr::group_by(Draw)
+    for(j in 1:max_model_size){
+        model_size_res <- e_df_css_meth |> dplyr::slice(j)
+        stopifnot(nrow(model_size_res) == n_sims)
+        css_meth_mses[j, ] <- model_size_res[, metric][[metric]]
+        css_meth_mse_means[j] <- mean(model_size_res[, metric][[metric]], na.rm=TRUE)
+        css_meth_mse_means[j] <- signif(css_meth_mse_means[j], digits=3)
+        sample_size_j <- sum(!is.na(model_size_res[, metric][[metric]]))
+        if(sample_size_j > 0){
+            css_meth_mse_ses[j] <- sd(model_size_res[, metric][[metric]],
+                na.rm=TRUE)/sqrt(sample_size_j)
+            css_meth_mse_ses[j] <- signif(css_meth_mse_ses[j], digits=3)
+        }
+        
+    }
+
+    n_comps <- length(methods_to_compare)
+
+    comp_means <- matrix(as.numeric(NA), max_model_size, n_comps)
+    comp_ses <- matrix(as.numeric(NA), max_model_size, n_comps)
+    p_values <- matrix(as.character(NA), max_model_size, n_comps)
+
+    colnames(p_values) <- nameMap(methods_to_compare)
+    colnames(comp_means) <- nameMap(methods_to_compare)
+    colnames(comp_ses) <- nameMap(methods_to_compare)
+
+    for(i in 1:n_comps){
+        e_df_meth_i <- e_df[e_df$Method == methods_to_compare[i], ]
+        e_df_meth_i <- e_df_meth_i |> dplyr::group_by(Draw)
+        for(j in 1:max_model_size){
+            model_size_res <- e_df_meth_i |> dplyr::slice(j)
+            stopifnot(nrow(model_size_res) == n_sims)
+            comp_means[j, i] <- mean(model_size_res[, metric][[metric]],
+                na.rm=TRUE)
+            comp_means[j, i] <- signif(comp_means[j, i], digits=3)
+            sample_size_ij <- sum(!is.na(model_size_res[, metric][[metric]]))
+            if(sample_size_ij > 0){
+                comp_ses[j, i] <- sd(model_size_res[, metric][[metric]],
+                    na.rm=TRUE)/sqrt(sample_size_ij)
+                comp_ses[j, i] <- signif(comp_ses[j, i], digits=3)
+            }
+            
+            if((sum(!is.na(css_meth_mses[j, ])) >= 2) & sample_size_ij >= 2){
+                p_values_j_i <- t.test(x=css_meth_mses[j, ],
+                    y=model_size_res[, metric][[metric]], alternative="less",
+                    paired=TRUE, var.equal=FALSE, na.action=na.omit)$p.value
+                p_values[j, i] <- as.character(signif(p_values_j_i, digits=3))
+            }
+
+            
+        }
+    }
+
+    rownames(p_values) <- 1:max_model_size
+
+    mean_se_df <- matrix(as.character(NA), max_model_size, n_comps + 1)
+    colnames(mean_se_df) <- c(nameMap(css_meth), nameMap(methods_to_compare))
+    for(j in 1:max_model_size){
+        # Take care of css_meth
+        mean_se_df[j, 1] <- paste(css_meth_mse_means[j], " (",
+            css_meth_mse_ses[j], ")", sep="")
+        for(i in 1:n_comps){
+            mean_se_df[j, i + 1] <- paste(comp_means[j, i], " (",
+                comp_ses[j, i], ")", sep="")
+        }
+    }
+
+    rownames(mean_se_df) <- 1:max_model_size
+
+    return(list(mean_se_df=mean_se_df, p_values=p_values))
+}
+
+df_data_app_stats <- function(e_df, css_meth="SS_CSS_weighted_cssr_plant",
+    methods_to_compare=c("SS_CSS_avg_cssr_plant", "SS_SS_cssr_plant",
+        "clusRepLasso_cssr_plant", "protolasso_cssr_plant",
+        "lasso_random_plant")){
+
+    metric <- "cssr_mse_plant"
+  
+    stopifnot(metric %in% colnames(e_df))
+
+    method_names <- unique(e_df$Method)
+
+    stopifnot(css_meth %in% method_names)
+    stopifnot(all(methods_to_compare %in% method_names))
+
+    css_meth_mses <- e_df[e_df$Method == css_meth, metric]
+    sample_size <- length(css_meth_mses)
+
+    print("sample size:")
+    print(sample_size)
+
+    css_meth_mean <- mean(css_meth_mses, na.rm=TRUE)
+    # Sample means and standard errors
+    css_meth_mean <- signif(css_meth_mean, digits=3)
+
+    n_comps <- length(methods_to_compare)
+
+    comp_means <- rep(as.numeric(NA), n_comps)
+
+    for(i in 1:n_comps){
+        meth_i_mses <- e_df[e_df$Method == methods_to_compare[i], metric]
+        stopifnot(length(meth_i_mses) == sample_size)
+
+        meth_i_mean <- mean(meth_i_mses, na.rm=TRUE)
+        comp_means[i] <- signif(meth_i_mean, digits=3)
+    }
+
+    stopifnot(all(!is.na(comp_means)))
+
+    mean_df <- c(css_meth_mean, comp_means)
+    names(mean_df) <- c(nameMap(css_meth), nameMap(methods_to_compare))
+
+    return(mean_df)
+>>>>>>> Stashed changes
 }

@@ -81,7 +81,7 @@ setwd(wd)
 ###############################################
 
 # Run simulation, or load simulation that has been previously run?
-run_new_sim <- TRUE
+run_new_sim <- FALSE
 # Titles on p_hat plots?
 p_hat_titles <- TRUE
 # legends on mse/false selection/proxy selection plots
@@ -105,7 +105,7 @@ n_clus <- 200
 # Cutoff for absolute correlation for estimated clusters
 est_clus_cutoff <- 0.5
 n_test <- 1000
-n_sims <- 400
+n_sims <- 2000
 # n_sims <- 3
 # p <- 50
 p <- 100
@@ -316,8 +316,8 @@ if(run_new_sim){
 results <- genPlotDf(gss_random_weighted_custom)
 
 results_df <- results$results_df
-
 n_methods <- results$n_methods
+e_df <- results$eval_df
 
 ### Figure 4 (previously Figure 5) (known clusters)
 
@@ -452,6 +452,87 @@ weights_plot <- subset_simulation(gss_random_weighted_custom,
 
 saveFigure2(subdir="figures", plot=weights_plot, size="xmlarge",
     filename="sim_5_3_weights_mse.pdf")
+
+# Get tables of p-values and means/standard errors
+
+# Known clusters
+sum_res_avg <- df_sim_stats(e_df, max_model_size=k_unblocked + sig_blocks,
+    css_meth="SS_CSS_avg_cssr", methods_to_compare=c("SS_CSS_weighted_cssr",
+        "SS_SS_cssr", "clusRepLasso_cssr", "protolasso_cssr", "lasso_random"))
+
+print("")
+print("")
+print("")
+print("Means and standard errors for known clusters:")
+print("")
+print("")
+print("")
+
+stargazer(sum_res_avg$mean_se_df, summary=FALSE)
+
+print("")
+print("")
+print("")
+print("p-values for known clusters, comparing to simple averaged cluster stability selection:")
+print("")
+print("")
+print("")
+
+stargazer(sum_res_avg$p_values, summary=FALSE)
+
+print("")
+print("")
+print("")
+print("p-values for known clusters, comparing to weighted averaged cluster stability selection:")
+print("")
+print("")
+print("")
+
+sum_res_weighted <- df_sim_stats(e_df, max_model_size=k_unblocked + sig_blocks,
+    css_meth="SS_CSS_weighted_cssr", methods_to_compare=c("SS_CSS_avg_cssr",
+        "SS_SS_cssr", "clusRepLasso_cssr", "protolasso_cssr", "lasso_random"))
+
+stargazer(sum_res_weighted$p_values, summary=FALSE)
+
+# Estimated clusters
+
+sum_res_avg_est <- df_sim_stats(e_df, max_model_size=k_unblocked + sig_blocks,
+    css_meth="SS_CSS_avg_cssr_est", methods_to_compare=c("SS_CSS_weighted_cssr_est",
+        "SS_SS_cssr", "clusRepLasso_cssr_est", "protolasso_cssr_est", "lasso_random"))
+
+print("")
+print("")
+print("")
+print("Means and standard errors for estimated clusters:")
+print("")
+print("")
+print("")
+
+stargazer(sum_res_avg_est$mean_se_df, summary=FALSE)
+
+print("")
+print("")
+print("")
+print("p-values for estimated clusters, comparing to simple averaged cluster stability selection:")
+print("")
+print("")
+print("")
+
+stargazer(sum_res_avg_est$p_values, summary=FALSE)
+
+print("")
+print("")
+print("")
+print("p-values for estimated clusters, comparing to weighted averaged cluster stability selection:")
+print("")
+print("")
+print("")
+
+sum_res_weighted_est <- df_sim_stats(e_df, max_model_size=k_unblocked + sig_blocks,
+    css_meth="SS_CSS_weighted_cssr_est", methods_to_compare=c("SS_CSS_avg_cssr_est",
+        "SS_SS_cssr", "clusRepLasso_cssr_est", "protolasso_cssr_est", "lasso_random"))
+
+stargazer(sum_res_weighted_est$p_values, summary=FALSE)
 
 print("Total time:")
 print(Sys.time() - t0)
