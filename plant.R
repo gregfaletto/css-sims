@@ -38,8 +38,8 @@ train_prop <- 0.4
 cor_cutoff <- 0.5
 
 # Number of draws to take
-# n_draws <- 1000
-n_draws <- 200
+n_draws <- 1000
+# n_draws <- 200
 
 # Number of SNPs to use in data set
 n_snps <- 1000
