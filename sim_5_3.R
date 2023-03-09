@@ -323,22 +323,23 @@ e_df <- results$eval_df
 
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr", "SS_SS_cssr_elnet", "elastic_net",
-        est_cluster_meths))), ],
-    n_methods - 3 - length(est_cluster_meths), max_model_size=sig_blocks +
-    k_unblocked)
+        "SS_CSS_avg_cssr", est_cluster_meths))), ],
+    n_methods - 4 - length(est_cluster_meths), max_model_size=sig_blocks +
+    k_unblocked, plot_errors=FALSE, line=TRUE)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr", "SS_SS_cssr_elnet", "elastic_net",
-        est_cluster_meths))), ])
+        "SS_CSS_avg_cssr", est_cluster_meths))), ], plot_errors=FALSE,
+    line=TRUE)
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr", "SS_SS_cssr_elnet", "elastic_net",
-        est_cluster_meths))), ],
-    n_methods - 3 - length(est_cluster_meths))
+        "SS_CSS_avg_cssr", est_cluster_meths))), ],
+    n_methods - 4 - length(est_cluster_meths))
 
 # 2. Save the legend
 #+++++++++++++++++++++++
-legend <- get_legend(fig_4_left + theme(legend.direction="horizontal"))
+legend <- get_legend(fig_4_right + theme(legend.direction="horizontal"))
 
 # 3. Remove the legend from the box plot
 #+++++++++++++++++++++++
@@ -365,13 +366,13 @@ saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4_known.pd
 
 fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths),
-    max_model_size=sig_blocks + k_unblocked)
+    max_model_size=sig_blocks + k_unblocked, plot_errors=FALSE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
     filename="sim_2_known_mse_supp.pdf")
 
 fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(est_cluster_meths)), ])
+    nameMap(est_cluster_meths)), ], plot_errors=FALSE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
     filename="sim_2_known_stab_supp.pdf")
@@ -388,20 +389,21 @@ saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
 
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est", "SS_SS_cssr_elnet", "elastic_net",
-        known_cluster_meths))), ], n_methods - 3 - length(known_cluster_meths),
-    max_model_size=sig_blocks + k_unblocked)
+        "SS_CSS_avg_cssr_est", known_cluster_meths))), ], n_methods - 4 - length(known_cluster_meths),
+    max_model_size=sig_blocks + k_unblocked, plot_errors=FALSE, line=TRUE)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est", "SS_SS_cssr_elnet", "elastic_net",
-        known_cluster_meths))), ])
+        "SS_CSS_avg_cssr_est", known_cluster_meths))), ], plot_errors=FALSE,
+    line=TRUE)
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est", "SS_SS_cssr_elnet", "elastic_net",
-        known_cluster_meths))), ], n_methods - 3 - length(known_cluster_meths))
+        "SS_CSS_avg_cssr_est", known_cluster_meths))), ], n_methods - 3 - length(known_cluster_meths))
 
 # 2. Save the legend
 #+++++++++++++++++++++++
-legend <- get_legend(fig_4_left + theme(legend.direction="horizontal"))
+legend <- get_legend(fig_4_right + theme(legend.direction="horizontal"))
 
 # 3. Remove the legend from the box plot
 #+++++++++++++++++++++++
@@ -428,13 +430,13 @@ saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_4_est.pdf"
 
 fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths),
-    max_model_size=sig_blocks + k_unblocked)
+    max_model_size=sig_blocks + k_unblocked, plot_errors=FALSE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
     filename="sim_2_est_mse_supp.pdf")
 
 fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(known_cluster_meths)), ])
+    nameMap(known_cluster_meths)), ], plot_errors=FALSE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
     filename="sim_2_est_stab_supp.pdf")
@@ -447,13 +449,12 @@ saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
 
 weights_plot <- subset_simulation(gss_random_weighted_custom,
     methods=c("SS_CSS_sparse_cssr", "SS_CSS_weighted_cssr",
-        "SS_CSS_avg_cssr")) |> plot_eval("cssr_opt_weights") +
-    ggtitle("MSEs of Estimated Weights")
+        "SS_CSS_avg_cssr")) |> plot_eval("cssr_opt_weights") + ggtitle("MSEs of Estimated Weights")
 
 saveFigure2(subdir="figures", plot=weights_plot, size="xmlarge",
     filename="sim_5_3_weights_mse.pdf")
 
-# Get tables of p-values and means/standard errors
+####### Get tables of p-values and means/standard errors for MSE
 
 # Known clusters
 sum_res_avg <- df_sim_stats(e_df, max_model_size=k_unblocked + sig_blocks,
@@ -461,31 +462,19 @@ sum_res_avg <- df_sim_stats(e_df, max_model_size=k_unblocked + sig_blocks,
         "SS_SS_cssr", "clusRepLasso_cssr", "protolasso_cssr", "lasso_random"))
 
 print("")
-print("")
-print("")
-print("Means and standard errors for known clusters:")
-print("")
-print("")
+print("Means and standard errors of MSES for known clusters:")
 print("")
 
 stargazer(sum_res_avg$mean_se_df, summary=FALSE)
 
 print("")
-print("")
-print("")
-print("p-values for known clusters, comparing to simple averaged cluster stability selection:")
-print("")
-print("")
+print("p-values for MSES of known clusters, comparing to simple averaged cluster stability selection:")
 print("")
 
 stargazer(sum_res_avg$p_values, summary=FALSE)
 
 print("")
-print("")
-print("")
-print("p-values for known clusters, comparing to weighted averaged cluster stability selection:")
-print("")
-print("")
+print("p-values for MSES of known clusters, comparing to weighted averaged cluster stability selection:")
 print("")
 
 sum_res_weighted <- df_sim_stats(e_df, max_model_size=k_unblocked + sig_blocks,
@@ -497,42 +486,97 @@ stargazer(sum_res_weighted$p_values, summary=FALSE)
 # Estimated clusters
 
 sum_res_avg_est <- df_sim_stats(e_df, max_model_size=k_unblocked + sig_blocks,
-    css_meth="SS_CSS_avg_cssr_est", methods_to_compare=c("SS_CSS_weighted_cssr_est",
-        "SS_SS_cssr", "clusRepLasso_cssr_est", "protolasso_cssr_est", "lasso_random"))
+    css_meth="SS_CSS_avg_cssr_est",
+    methods_to_compare=c("SS_CSS_weighted_cssr_est", "SS_SS_cssr",
+        "clusRepLasso_cssr_est", "protolasso_cssr_est", "lasso_random"))
 
 print("")
-print("")
-print("")
-print("Means and standard errors for estimated clusters:")
-print("")
-print("")
+print("Means and standard errors of MSES for estimated clusters:")
 print("")
 
 stargazer(sum_res_avg_est$mean_se_df, summary=FALSE)
 
 print("")
-print("")
-print("")
-print("p-values for estimated clusters, comparing to simple averaged cluster stability selection:")
-print("")
-print("")
+print("p-values for MSES of estimated clusters, comparing to simple averaged cluster stability selection:")
 print("")
 
 stargazer(sum_res_avg_est$p_values, summary=FALSE)
 
 print("")
-print("")
-print("")
-print("p-values for estimated clusters, comparing to weighted averaged cluster stability selection:")
-print("")
-print("")
+print("p-values for MSES of estimated clusters, comparing to weighted averaged cluster stability selection:")
 print("")
 
-sum_res_weighted_est <- df_sim_stats(e_df, max_model_size=k_unblocked + sig_blocks,
-    css_meth="SS_CSS_weighted_cssr_est", methods_to_compare=c("SS_CSS_avg_cssr_est",
-        "SS_SS_cssr", "clusRepLasso_cssr_est", "protolasso_cssr_est", "lasso_random"))
+
+sum_res_weighted_est <- df_sim_stats(e_df, max_model_size=k_unblocked +
+    sig_blocks, css_meth="SS_CSS_weighted_cssr_est",
+    methods_to_compare=c("SS_CSS_avg_cssr_est", "SS_SS_cssr",
+        "clusRepLasso_cssr_est", "protolasso_cssr_est", "lasso_random"))
 
 stargazer(sum_res_weighted_est$p_values, summary=FALSE)
+
+
+####### Get tables of p-values and means/standard errors for stability
+
+# Known clusters
+sum_res_avg_stab <- getStabSummary(results_df, max_model_size=k_unblocked +
+    sig_blocks, num_sims=n_sims, css_meth=nameMap("SS_CSS_avg_cssr"),
+    methods_to_compare=nameMap(c("SS_CSS_weighted_cssr", "SS_SS_cssr",
+        "clusRepLasso_cssr", "protolasso_cssr", "lasso_random")))
+
+print("")
+print("Means and standard errors of NSB Stability for known clusters:")
+print("")
+
+stargazer(sum_res_avg_stab$mean_se_df, summary=FALSE)
+
+print("")
+print("p-values for NSB Stability of known clusters, comparing to simple averaged cluster stability selection:")
+print("")
+
+stargazer(sum_res_avg_stab$p_values, summary=FALSE)
+
+print("")
+print("p-values for NSB Stability of known clusters, comparing to weighted averaged cluster stability selection:")
+print("")
+
+
+sum_res_weighted_stab <- getStabSummary(results_df, max_model_size=k_unblocked +
+    sig_blocks, num_sims=n_sims, css_meth=nameMap("SS_CSS_weighted_cssr"),
+    methods_to_compare=nameMap(c("SS_CSS_avg_cssr", "SS_SS_cssr",
+        "clusRepLasso_cssr", "protolasso_cssr", "lasso_random")))
+
+stargazer(sum_res_weighted_stab$p_values, summary=FALSE)
+
+# Estimated clusters
+
+sum_res_avg_est_stab <- getStabSummary(results_df, max_model_size=k_unblocked +
+    sig_blocks, num_sims=n_sims, css_meth=nameMap("SS_CSS_avg_cssr_est"),
+    methods_to_compare=nameMap(c("SS_CSS_weighted_cssr_est", "SS_SS_cssr",
+        "clusRepLasso_cssr_est", "protolasso_cssr_est", "lasso_random")))
+
+print("")
+print("Means and standard errors of NSB Stability for estimated clusters:")
+print("")
+
+stargazer(sum_res_avg_est_stab$mean_se_df, summary=FALSE)
+
+print("")
+print("p-values for NSB Stability of estimated clusters, comparing to simple averaged cluster stability selection:")
+print("")
+
+stargazer(sum_res_avg_est_stab$p_values, summary=FALSE)
+
+print("")
+print("p-values for NSB Stability of estimated clusters, comparing to weighted averaged cluster stability selection:")
+print("")
+
+sum_res_weighted_est_stab <- getStabSummary(results_df,
+    max_model_size=k_unblocked + sig_blocks, num_sims=n_sims,
+    css_meth=nameMap("SS_CSS_weighted_cssr_est"),
+    methods_to_compare=nameMap(c("SS_CSS_avg_cssr_est", "SS_SS_cssr",
+        "clusRepLasso_cssr_est", "protolasso_cssr_est", "lasso_random")))
+
+stargazer(sum_res_weighted_est_stab$p_values, summary=FALSE)
 
 print("Total time:")
 print(Sys.time() - t0)

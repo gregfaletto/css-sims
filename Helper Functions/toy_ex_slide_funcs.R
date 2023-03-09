@@ -2173,16 +2173,28 @@ calcNSBStabNone <- function(sel_mat, n_sims=NA, calc_errors=FALSE, conf=0.95,
         function(x){M/(M-1)*mean(x)*(1-mean(x))})
     stopifnot(all.equal(s_f_squared, M/(M-1)*p_hat*(1-p_hat)))
     stopifnot(all(s_f_squared >= 0))
+    stopifnot(mean(s_f_squared) >= 0)
     k <- rowSums(sel_mat_nonzero)
+    stopifnot(all(k <= p))
+    stopifnot(all(k >= 0))
     k_bar <- mean(k)
-    stopifnot(k_bar >= 0)
-    stopifnot(k_bar <= p)
     stopifnot(length(k_bar) == 1)
+    if(k_bar == 0){
+        return(NA)
+    }
+    if(k_bar == p){
+        return(1)
+    }
+
+    stopifnot(k_bar > 0)
+    stopifnot(k_bar < p)
+    stopifnot(k_bar/p*(1 - k_bar/p) > 0)
 
     stat <- 1 - mean(s_f_squared)/(k_bar/p*(1 - k_bar/p))
 
     # Check output
     stopifnot(length(stat) == 1)
+    stopifnot(!is.na(stat))
     stopifnot(is.numeric(stat) | is.integer(stat))
     stopifnot(stat <= 1)
 
@@ -2213,11 +2225,11 @@ calcNSBStabNone <- function(sel_mat, n_sims=NA, calc_errors=FALSE, conf=0.95,
 
         # Upper margin can't be greater than 1 since statistic can't be
         # greater than 1
-        return(c(stat, stat - margin, min(stat + margin, 1)))
+        ret <- c(stat, stat - margin, min(stat + margin, 1), v)
+        names(ret) <- c("NSBStab", "NSBLower", "NSBUpper", "NSBVar")
+        return(ret)
     }
-
     return(stat)
-
 }
 
 checkNSBStabInputs <- function(sel_mat, n_sims, calc_errors, conf,
@@ -4679,7 +4691,7 @@ getBinMat <- function(output, meth, model_sizes, num_sims, p_feat){
 
 createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
     plot_errors=TRUE, subtitle=FALSE, max_model_size, log_mse=FALSE,
-    break_by=2){
+    break_by=2, line=FALSE){
 
     if(max_model_size %% 2 == 0){
         max_rank <- max_model_size
@@ -4687,11 +4699,20 @@ createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
         max_rank <- max_model_size+ 1
     }
 
-    plot <- ggplot(df_gg, aes(x=ModelSize, y=MSE, color=Method,
-        shape=Method)) + scale_shape_manual(values=1:n_methods) +
-        suppressWarnings(geom_point(size=2.5, alpha=1)) + 
+    plot <- ggplot(df_gg, aes(x=ModelSize, y=MSE, color=Method, shape=Method)) +
+        scale_shape_manual(values=1:n_methods) +
         xlab("No. Fitted Coefficients") +
-        scale_x_continuous(breaks=seq(break_by, max_rank, by=break_by))
+        scale_x_continuous(breaks=seq(break_by, max_rank, by=break_by),
+            limits=c(0, max_rank))
+
+    if(line){
+        plot <- plot + suppressWarnings(geom_line())
+    } else{
+        plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1))
+    }
+    
+
+    plot <- plot 
 
     if(subtitle){
         subtitle_txt <- paste("n = ", n_model, ", p = ", p, ",
@@ -4716,7 +4737,7 @@ createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
 }
 
 createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE, 
-    subtitle=FALSE, break_by=2){
+    subtitle=FALSE, break_by=2, line=FALSE){
     require(ggplot2)
     
     # Get max ranking value for integer labels on horizontal axis
@@ -4731,11 +4752,17 @@ createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE,
     }
 
     plot <- ggplot(df_gg, aes(x=ModelSize, y=NSBStability,
-        color=Method, shape=Method)) + scale_shape_manual(values=1:n_methods)
-
-    plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1)) +
+        color=Method, shape=Method)) + scale_shape_manual(values=1:n_methods) +
         xlab("No. Fitted Coefficients") + ylab("NSB Stability") +
         scale_x_continuous(breaks=seq(break_by, max_rank, by=break_by))
+
+    if(line){
+        plot <- plot + suppressWarnings(geom_line()) 
+    } else{
+        plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1)) 
+    }
+
+    
 
     if(subtitle){
         plot <- plot + labs(subtitle=subtitle_txt)
@@ -4757,7 +4784,7 @@ createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE,
 
 
 createStabMSEPlot2 <- function(df_gg, n_methods, legend=TRUE, plot_errors=FALSE,
-    subtitle=FALSE, log_mse=FALSE){
+    subtitle=FALSE, log_mse=FALSE, line=FALSE){
 
     require(ggplot2)
 
@@ -4766,14 +4793,15 @@ createStabMSEPlot2 <- function(df_gg, n_methods, legend=TRUE, plot_errors=FALSE,
             beta_high = ", beta_high, sep="")
     }
 
-    plot <- ggplot(df_gg, aes(x=NSBStability, y=MSE,
-        color=Method, shape=Method)) + scale_shape_manual(values=1:n_methods) +
-        suppressWarnings(geom_point(size=2.5, alpha=1)) + xlab("NSB Stability")
-        # + 
-        # geom_hline(yintercept=true_model_loss
-        #     # , color="red"
-        #     , linetype = "dashed"
-        #     )
+    plot <- ggplot(df_gg, aes(x=NSBStability, y=MSE, color=Method,
+        shape=Method)) + scale_shape_manual(values=1:n_methods) +
+        xlab("NSB Stability")
+
+    if(line){
+        plot <- plot + suppressWarnings(geom_line())
+    } else{
+        plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1))
+    }
 
     if(subtitle){
         plot <- plot + labs(subtitle=subtitle_txt)
@@ -4824,7 +4852,7 @@ createPhatPlot2 <- function(output, ylab="Proportion of Subsamples",
 
     stopifnot(length(output) == n_sims)
 
-    output_1 <- output[[1]]
+    output_1 <- output[[2]]
 
     sel_mat <- output_1$css_res$feat_sel_mat
 
@@ -4940,6 +4968,7 @@ genPlotDf <- function(completed_sim, alpha=0.05){
     nsbstabs <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
     nsb_lowers <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
     nsb_uppers <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
+    stab_vars <- rep(as.numeric(NA), (sig_blocks + k_unblocked)*n_methods)
 
     # Get MSEs and NSB stabilities
     for(i in 1:n_methods){
@@ -4976,10 +5005,12 @@ genPlotDf <- function(completed_sim, alpha=0.05){
             # Get stability metric--only works if there are at least 2 simulations
             stopifnot(n_sims > 1)
             if(all(!is.na(mat_i_k))){
+                # c("NSBStab", "NSBLower", "NSBUpper", "NSBVar")
                 stab_res_ik <- calcNSBStabNone(mat_i_k, calc_errors=TRUE)
-                nsbstabs[ret_df_ind_ik] <- stab_res_ik[1]
-                nsb_lowers[ret_df_ind_ik] <- stab_res_ik[2]
-                nsb_uppers[ret_df_ind_ik] <- stab_res_ik[3]
+                nsbstabs[ret_df_ind_ik] <- stab_res_ik["NSBStab"]
+                nsb_lowers[ret_df_ind_ik] <- stab_res_ik["NSBLower"]
+                nsb_uppers[ret_df_ind_ik] <- stab_res_ik["NSBUpper"]
+                stab_vars[ret_df_ind_ik] <- stab_res_ik["NSBVar"]
             }
             
         }
@@ -4996,7 +5027,7 @@ genPlotDf <- function(completed_sim, alpha=0.05){
 
     results_df <- data.frame(ModelSize=model_sizes, Method=methods_vec, MSE=mses,
         MSELower=mses - margins, MSEUpper=mses + margins, NSBStability=nsbstabs,
-        StabLower=nsb_lowers, StabUpper=nsb_uppers)
+        StabLower=nsb_lowers, StabUpper=nsb_uppers, StabVar=stab_vars)
 
     return(list(results_df=results_df, n_methods=n_methods, eval_df=edf))
 }
@@ -5103,8 +5134,7 @@ genPlotDfPlant <- function(completed_sim, coarseness){
         MSE=mses, NSBStability=nsbstabs)
 
     return(list(results_df=results_df, n_methods=n_methods, eval_df=edf))
-# <<<<<<< Updated upstream
-# =======
+
 }
 
 df_sim_stats <- function(e_df, max_model_size,
@@ -5161,18 +5191,21 @@ df_sim_stats <- function(e_df, max_model_size,
         e_df_meth_i <- e_df_meth_i |> dplyr::group_by(Draw)
         for(j in 1:max_model_size){
             model_size_res <- e_df_meth_i |> dplyr::slice(j)
+
             stopifnot(nrow(model_size_res) == n_sims)
+
             comp_means[j, i] <- mean(model_size_res[, metric][[metric]],
                 na.rm=TRUE)
             comp_means[j, i] <- signif(comp_means[j, i], digits=3)
             sample_size_ij <- sum(!is.na(model_size_res[, metric][[metric]]))
+
             if(sample_size_ij > 0){
                 comp_ses[j, i] <- sd(model_size_res[, metric][[metric]],
                     na.rm=TRUE)/sqrt(sample_size_ij)
                 comp_ses[j, i] <- signif(comp_ses[j, i], digits=3)
             }
             
-            if((sum(!is.na(css_meth_mses[j, ])) >= 2) & sample_size_ij >= 2){
+            if((sum(!is.na(css_meth_mses[j, ])) >= 3) & sample_size_ij >= 3){
                 p_values_j_i <- t.test(x=css_meth_mses[j, ],
                     y=model_size_res[, metric][[metric]], alternative="less",
                     paired=TRUE, var.equal=FALSE, na.action=na.omit)$p.value
@@ -5184,13 +5217,15 @@ df_sim_stats <- function(e_df, max_model_size,
     }
 
     rownames(p_values) <- 1:max_model_size
-
+    
     mean_se_df <- matrix(as.character(NA), max_model_size, n_comps + 1)
     colnames(mean_se_df) <- c(nameMap(css_meth), nameMap(methods_to_compare))
+
     for(j in 1:max_model_size){
         # Take care of css_meth
         mean_se_df[j, 1] <- paste(css_meth_mse_means[j], " (",
             css_meth_mse_ses[j], ")", sep="")
+
         for(i in 1:n_comps){
             mean_se_df[j, i + 1] <- paste(comp_means[j, i], " (",
                 comp_ses[j, i], ")", sep="")
@@ -5199,7 +5234,65 @@ df_sim_stats <- function(e_df, max_model_size,
 
     rownames(mean_se_df) <- 1:max_model_size
 
+    # Data.frame of stability results
+
     return(list(mean_se_df=mean_se_df, p_values=p_values))
+}
+
+getStabSummary <- function(res_df, max_model_size, num_sims,
+    css_meth="SS_CSS_weighted_cssr", methods_to_compare=c("SS_SS_cssr",
+    "clusRepLasso_cssr", "protolasso_cssr", "lasso_random", "SS_CSS_avg_cssr")){
+
+    stopifnot(css_meth %in% unique(res_df$Method))
+    stopifnot(all(methods_to_compare %in% unique(res_df$Method)))
+
+    n_comps <- length(methods_to_compare)
+
+    stab_mean_se_df <- matrix(as.character(NA), max_model_size, n_comps + 1)
+    stab_p_values <- matrix(as.character(NA), max_model_size, n_comps)
+
+    colnames(stab_p_values) <- nameMap(methods_to_compare)
+    rownames(stab_p_values) <- 1:max_model_size
+
+    colnames(stab_mean_se_df) <- c(nameMap(css_meth),
+        nameMap(methods_to_compare))
+    rownames(stab_mean_se_df) <- 1:max_model_size
+
+    res_df <- res_df |> dplyr::group_by(Method)
+
+    for(j in 1:max_model_size){
+        res_df_j <- res_df |> dplyr::slice(j)
+
+        # Take care of css_meth
+        stab_css_j <- as.numeric(res_df_j[res_df_j$Method == css_meth,
+            "NSBStability"])
+        stab_css_var_j <- as.numeric(res_df_j[res_df_j$Method == css_meth,
+            "StabVar"])
+        stab_css_se_j <- signif(sqrt(stab_css_var_j/num_sims), digits=3)
+
+        stab_mean_se_df[j, 1] <- paste(signif(stab_css_j, digits=3), " (",
+            stab_css_se_j, ")", sep="")
+
+        for(i in 1:n_comps){
+            stab_ji <- as.numeric(res_df_j[res_df_j$Method ==
+                methods_to_compare[i], "NSBStability"])
+            stab_var_ji <- as.numeric(res_df_j[res_df_j$Method ==
+                methods_to_compare[i], "StabVar"])
+            stab_se_ji <- signif(sqrt(stab_var_ji/num_sims), digits=3)
+
+            stab_mean_se_df[j, i + 1] <- paste(signif(stab_ji, digits=3), " (",
+                stab_se_ji, ")", sep="")
+
+            # Thm 9, p. 16, Nogueira et. al (2018)
+            z_stat_ij <- (stab_ji - stab_css_j)/(sqrt(stab_css_var_j +
+                stab_var_ji))
+
+            stab_p_values[j, i] <- as.character(signif(pnorm(z_stat_ij),
+                digits=3))
+        }
+    }
+
+    return(list(mean_se_df=stab_mean_se_df, p_values=stab_p_values))
 }
 
 df_data_app_stats <- function(e_df, css_meth="SS_CSS_weighted_cssr_plant",
@@ -5244,5 +5337,4 @@ df_data_app_stats <- function(e_df, css_meth="SS_CSS_weighted_cssr_plant",
     names(mean_df) <- c(nameMap(css_meth), nameMap(methods_to_compare))
 
     return(mean_df)
->>>>>>> Stashed changes
 }
