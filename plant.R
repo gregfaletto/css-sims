@@ -24,10 +24,10 @@ doParallel::registerDoParallel(cl)
 sim_dir <- getwd()
 
 # load data?
-load_data <- TRUE
+load_data <- FALSE
 
 # Run new study, or load study that has been previously run?
-run_new_study <- TRUE
+run_new_study <- FALSE
 
 # Training set proportion
 
@@ -272,6 +272,35 @@ results <- genPlotDfPlant(plant_sim, coarseness=coarseness)
 results_df <- results$results_df
 
 n_methods <- results$n_methods
+
+e_df <- results$eval_df
+
+# Table of means of MSEs
+
+sum_res_avg <- df_plant_app(e_df, max_model_size=p_max,
+    methods=c("SS_CSS_avg_cssr_plant", "SS_CSS_weighted_cssr_plant",
+        "SS_SS_cssr_plant", "clusRepLasso_cssr_plant", "protolasso_cssr_plant",
+        "lasso_random_plant"), coarseness=coarseness)
+
+print("")
+print("Means of MSES:")
+print("")
+
+stargazer(sum_res_avg, summary=FALSE)
+
+# Table of means of stability
+
+stab_df <- plantStabSummary(results_df, max_model_size=p_max,
+	num_sims=n_draws, methods=nameMap(c("SS_CSS_avg_cssr_plant",
+		"SS_CSS_weighted_cssr_plant",
+        "SS_SS_cssr_plant", "clusRepLasso_cssr_plant", "protolasso_cssr_plant",
+        "lasso_random_plant")), coarseness=coarseness)
+
+print("")
+print("Means of NSB Stability:")
+print("")
+
+stargazer(stab_df, summary=FALSE)
 
 ### Figure 4 (previously Figure 5) 
 # Omit uncompetitive methods for visual clarity

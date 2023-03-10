@@ -5268,7 +5268,7 @@ getStabSummary <- function(res_df, max_model_size, num_sims,
             "NSBStability"])
         stab_css_var_j <- as.numeric(res_df_j[res_df_j$Method == css_meth,
             "StabVar"])
-        stab_css_se_j <- signif(sqrt(stab_css_var_j/num_sims), digits=3)
+        stab_css_se_j <- signif(sqrt(stab_css_var_j), digits=3)
 
         stab_mean_se_df[j, 1] <- paste(signif(stab_css_j, digits=3), " (",
             stab_css_se_j, ")", sep="")
@@ -5278,7 +5278,7 @@ getStabSummary <- function(res_df, max_model_size, num_sims,
                 methods_to_compare[i], "NSBStability"])
             stab_var_ji <- as.numeric(res_df_j[res_df_j$Method ==
                 methods_to_compare[i], "StabVar"])
-            stab_se_ji <- signif(sqrt(stab_var_ji/num_sims), digits=3)
+            stab_se_ji <- signif(sqrt(stab_var_ji), digits=3)
 
             stab_mean_se_df[j, i + 1] <- paste(signif(stab_ji, digits=3), " (",
                 stab_se_ji, ")", sep="")
@@ -5295,7 +5295,8 @@ getStabSummary <- function(res_df, max_model_size, num_sims,
     return(list(mean_se_df=stab_mean_se_df, p_values=stab_p_values))
 }
 
-df_data_app_stats <- function(e_df, css_meth="SS_CSS_weighted_cssr_plant",
+df_plant_stats <- function(e_df, max_model_size, coarseness,
+    css_meth="SS_CSS_weighted_cssr_plant",
     methods_to_compare=c("SS_CSS_avg_cssr_plant", "SS_SS_cssr_plant",
         "clusRepLasso_cssr_plant", "protolasso_cssr_plant",
         "lasso_random_plant")){
@@ -5323,6 +5324,95 @@ df_data_app_stats <- function(e_df, css_meth="SS_CSS_weighted_cssr_plant",
 
     comp_means <- rep(as.numeric(NA), n_comps)
 
+
+    n_batches <- p_max/coarseness
+    stopifnot(n_batches == round(n_batches))
+
+
+
+
+
+    
+
+    # model_sizes <- rep(1:n_batches, times=n_methods)
+    methods_vec <- nameMap(rep(methods, each=n_batches))
+    mean_model_sizes <- rep(as.numeric(NA), n_batches*n_methods)
+    mses <- rep(as.numeric(NA), n_batches*n_methods)
+    nsbstabs <- rep(as.numeric(NA), n_batches*n_methods)
+
+    model_sizes <- list()
+    for(k in 1:n_batches){
+        model_sizes[[k]] <- ((k - 1)*coarseness + 1):(k*coarseness)
+    }
+
+    stopifnot(max(model_sizes[[k]]) <= p_max)
+    stopifnot(n_draws > 1)
+
+    # Get MSEs and NSB stabilities
+    for(i in 1:n_methods){
+        
+        edf_i <- edf[edf$Method == methods[i], ]
+        # Should have a number of rows divisible by p_max
+        stopifnot(nrow(edf_i) %% p_max == 0)
+        # edf_i has p_max observations of MSEs for each draw for method[i] (one
+        # MSE for each model size on each draw)
+        stopifnot(n_draws*p_max == nrow(edf_i))
+        
+        meth_i_vec <- rep(as.numeric(NA), n_batches)
+        o_i <- output(completed_sim, methods=methods[i])@out
+
+        stopifnot(length(model_sizes) == n_batches)
+
+        for(k in 1:n_batches){
+            # MSE
+            model_sizes_k <- model_sizes[[k]]
+
+            stopifnot(length(model_sizes_k) == coarseness)
+            stopifnot(all(!is.na(model_sizes_k)))
+
+            ret_df_ind_ik <- (i - 1)*n_batches + k
+            mean_model_sizes[ret_df_ind_ik] <- mean(model_sizes_k)
+            # Gather all the indices corresponding to model sizes in
+            # model_sizes_k across all draws
+            edf_inds_k <- integer()
+            for(j in 1:coarseness){
+                edf_inds_k <- c(edf_inds_k, p_max*(0:(n_draws - 1)) +
+                    model_sizes_k[j])
+            }
+            
+            stopifnot(all(edf_inds_k %in% 1:nrow(edf_i)))
+            stopifnot("cssr_mse_plant" %in% colnames(edf_i))
+            mses_ik <- edf_i[edf_inds_k, "cssr_mse_plant"]
+
+            # Only track mse for this group if there are at least MIN_COUNT
+            # observations
+            if(sum(!is.na(mses_ik)) >= MIN_COUNT){
+                mses[ret_df_ind_ik] <- mean(mses_ik, na.rm=TRUE)
+            }
+
+            # NSB Stability
+            mat_i_k <- getBinMat(o_i, methods[i], model_sizes_k,
+                num_sims=n_draws, p_feat=n_snps)
+            # Get stability metric--only works if there are at least 2 simulations
+            stopifnot(n_draws > 1)
+            if(all(!is.na(mat_i_k))){
+                if(nrow(mat_i_k) >= MIN_COUNT){
+                    nsbstabs[ret_df_ind_ik] <- calcNSBStabNone(mat_i_k,
+                        calc_errors=FALSE)
+                }
+            }
+        }
+        print(paste("Done with method", methods[i]))
+        print("Time in this step so far:")
+        t_i_end <- Sys.time()
+        print(t_i_end - t1)
+        print("Estimated time to go:")
+        print((n_methods - i)/i*(t_i_end - t1))
+    }
+
+
+
+
     for(i in 1:n_comps){
         meth_i_mses <- e_df[e_df$Method == methods_to_compare[i], metric]
         stopifnot(length(meth_i_mses) == sample_size)
@@ -5337,4 +5427,121 @@ df_data_app_stats <- function(e_df, css_meth="SS_CSS_weighted_cssr_plant",
     names(mean_df) <- c(nameMap(css_meth), nameMap(methods_to_compare))
 
     return(mean_df)
+}
+
+df_plant_app <- function(e_df, max_model_size, coarseness,
+    methods=c("SS_CSS_weighted_cssr",, "SS_SS_cssr",
+    "clusRepLasso_cssr", "protolasso_cssr", "lasso_random", "SS_CSS_avg_cssr")){
+    
+    require(dplyr)
+  
+    metric <- "cssr_mse_plant"
+
+    stopifnot(metric %in% colnames(e_df))
+
+    method_names <- unique(e_df$Method)
+
+    stopifnot(all(methods %in% method_names))
+
+    draws <- unique(e_df$Draw)
+    stopifnot(length(draws) == n_draws)
+
+    n_batches <- max_model_size/coarseness
+    stopifnot(n_batches == round(n_batches))
+
+    batch_inds <- list()
+    for(i in 1:n_batches){
+        batch_inds[[i]] <- (coarseness*(i - 1) + 1):(coarseness*i)
+    }
+
+    test_batch_inds <- unlist(batch_inds)
+
+    stopifnot(length(test_batch_inds) == max_model_size)
+    stopifnot(length(unique(test_batch_inds)) == max_model_size)
+    stopifnot(all(test_batch_inds <= max_model_size))
+
+    rm(test_batch_inds)
+
+    n_methods <- length(methods)
+
+    comp_means <- matrix(as.character(NA), n_batches, n_methods)
+
+    colnames(comp_means) <- nameMap(methods)
+
+    rownames(comp_means) <- rep("", n_batches)
+
+    for(i in 1:n_batches){
+        name_i <- paste(batch_inds[[i]][1], " - ", batch_inds[[i]][coarseness],
+            sep="")
+        rownames(comp_means)[i] <- name_i
+    }    
+
+    for(i in 1:n_methods){
+        e_df_meth_i <- e_df[e_df$Method == methods[i], ]
+        e_df_meth_i <- e_df_meth_i |> dplyr::group_by(Draw)
+        for(j in 1:n_batches){
+            model_size_res <- e_df_meth_i |> dplyr::slice(batch_inds[[j]])
+
+            stopifnot(nrow(model_size_res) == n_draws*coarseness)
+
+            comp_means_ji <- mean(model_size_res[, metric][[metric]],
+                na.rm=TRUE)
+            comp_means[j, i] <- as.character(signif(comp_means_ji, digits=3))  
+        }
+    }
+
+    return(comp_means)
+}
+
+
+plantStabSummary <- function(res_df, max_model_size, num_sims,
+    coarseness, methods=nameMap(c("SS_CSS_weighted_cssr",, "SS_SS_cssr",
+    "clusRepLasso_cssr", "protolasso_cssr", "lasso_random", "SS_CSS_avg_cssr"))){
+
+    stopifnot(all(methods %in% unique(res_df$Method)))
+
+    n_methods <- length(methods)
+
+    n_batches <- max_model_size/coarseness
+    stopifnot(n_batches == round(n_batches))
+
+    batch_inds <- list()
+    for(i in 1:n_batches){
+        batch_inds[[i]] <- (coarseness*(i - 1) + 1):(coarseness*i)
+    }
+
+    test_batch_inds <- unlist(batch_inds)
+
+    stopifnot(length(test_batch_inds) == max_model_size)
+    stopifnot(length(unique(test_batch_inds)) == max_model_size)
+    stopifnot(all(test_batch_inds <= max_model_size))
+
+    rm(test_batch_inds)
+
+    stab_mean_df <- matrix(as.character(NA), n_batches, n_methods)
+
+    colnames(stab_mean_df) <- nameMap(methods)
+
+    rownames(stab_mean_df) <- rep("", n_batches)
+
+    for(i in 1:n_batches){
+        name_i <- paste(batch_inds[[i]][1], " - ", batch_inds[[i]][coarseness],
+            sep="")
+        rownames(stab_mean_df)[i] <- name_i
+    }  
+
+    res_df <- res_df |> dplyr::group_by(Method)
+
+    for(j in 1:n_batches){
+        res_df_j <- res_df |> dplyr::slice(j)
+
+        for(i in 1:n_methods){
+            stab_ji <- as.numeric(res_df_j[res_df_j$Method ==
+                methods[i], "NSBStability"])
+
+            stab_mean_df[j, i] <- as.character(signif(stab_ji, digits=3))
+        }
+    }
+
+    return(stab_mean_df)
 }
