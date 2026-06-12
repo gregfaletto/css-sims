@@ -335,7 +335,7 @@ fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr", "SS_SS_cssr_elnet", "elastic_net",
         "SS_CSS_avg_cssr", est_cluster_meths))), ],
-    n_methods - 4 - length(est_cluster_meths))
+    n_methods - 4 - length(est_cluster_meths), line=TRUE)
 
 # 2. Save the legend
 #+++++++++++++++++++++++
@@ -399,7 +399,7 @@ fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est", "SS_SS_cssr_elnet", "elastic_net",
-        "SS_CSS_avg_cssr_est", known_cluster_meths))), ], n_methods - 3 - length(known_cluster_meths))
+        "SS_CSS_avg_cssr_est", known_cluster_meths))), ], n_methods - 3 - length(known_cluster_meths), line=TRUE)
 
 # 2. Save the legend
 #+++++++++++++++++++++++

@@ -158,6 +158,29 @@ nameMap <- function(sys_name){
     return(ret)
 }
 
+# Fixed color/shape per method display name, so every figure draws a method
+# (Stability Selection above all) with the same color and shape regardless of
+# which subset of methods that figure plots. Keys MUST match nameMap()'s display
+# names exactly; an unmapped method would otherwise render a silent grey point.
+methodColorMap <- function(){
+    c("Lasso"="grey40", "Stability Selection"="#E41A1C", "SS (Elastic Net)"="#FB9A99",
+      "Sparse CSS"="#377EB8", "Sparse CSS (est. clusts)"="#80B1D3",
+      "Weighted Averaged CSS"="#4DAF4A", "Weighted Averaged CSS (est. clusts)"="#B3DE69",
+      "Simple Averaged CSS"="#984EA3", "Simple Averaged CSS (est. clusts)"="#BC80BD",
+      "Cluster Rep. Lasso"="#FF7F00", "Cluster Rep. Lasso (est. clusts)"="#FDB462",
+      "Protolasso"="#A65628", "Protolasso (est. clusts)"="#D9A679",
+      "Elastic Net"="#999999")
+}
+
+methodShapeMap <- function(){
+    c("Lasso"=16, "Stability Selection"=17, "SS (Elastic Net)"=2,
+      "Sparse CSS"=15, "Sparse CSS (est. clusts)"=0,
+      "Weighted Averaged CSS"=18, "Weighted Averaged CSS (est. clusts)"=5,
+      "Simple Averaged CSS"=8, "Simple Averaged CSS (est. clusts)"=7,
+      "Cluster Rep. Lasso"=3, "Cluster Rep. Lasso (est. clusts)"=4,
+      "Protolasso"=6, "Protolasso (est. clusts)"=9, "Elastic Net"=1)
+}
+
 makeDfMethodsDisplay <- function(df){
     # Takes in data.frame with computer-friendly labels and returns 
     # data.frame with display-friendly labels
@@ -4699,16 +4722,20 @@ createLossesPlot3 <- function(df_gg, n_methods, legend=TRUE,
         max_rank <- max_model_size+ 1
     }
 
+    stopifnot(all(unique(as.character(df_gg$Method)) %in%
+        names(methodColorMap())))
+
     plot <- ggplot(df_gg, aes(x=ModelSize, y=MSE, color=Method, shape=Method)) +
-        scale_shape_manual(values=1:n_methods) +
+        scale_shape_manual(values=methodShapeMap()) +
+        scale_color_manual(values=methodColorMap()) +
         xlab("No. Fitted Coefficients") +
         scale_x_continuous(breaks=seq(break_by, max_rank, by=break_by),
             limits=c(0, max_rank))
 
+    # Always draw points; add a connecting line when line=TRUE (line-plus-dots).
+    plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1))
     if(line){
         plot <- plot + suppressWarnings(geom_line())
-    } else{
-        plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1))
     }
     
 
@@ -4751,15 +4778,19 @@ createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE,
             beta_high = ", beta_high, sep="")
     }
 
+    stopifnot(all(unique(as.character(df_gg$Method)) %in%
+        names(methodColorMap())))
+
     plot <- ggplot(df_gg, aes(x=ModelSize, y=NSBStability,
-        color=Method, shape=Method)) + scale_shape_manual(values=1:n_methods) +
+        color=Method, shape=Method)) + scale_shape_manual(values=methodShapeMap()) +
+        scale_color_manual(values=methodColorMap()) +
         xlab("No. Fitted Coefficients") + ylab("NSB Stability") +
         scale_x_continuous(breaks=seq(break_by, max_rank, by=break_by))
 
+    # Always draw points; add a connecting line when line=TRUE (line-plus-dots).
+    plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1))
     if(line){
-        plot <- plot + suppressWarnings(geom_line()) 
-    } else{
-        plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1)) 
+        plot <- plot + suppressWarnings(geom_line())
     }
 
     
@@ -4788,19 +4819,30 @@ createStabMSEPlot2 <- function(df_gg, n_methods, legend=TRUE, plot_errors=FALSE,
 
     require(ggplot2)
 
+    stopifnot(all(unique(as.character(df_gg$Method)) %in%
+        names(methodColorMap())))
+
+    # Here x is stability, not model size, so the connecting line must trace each
+    # method in model-size order. Sort rows by (Method, ModelSize) and use
+    # geom_path (follows data order) rather than geom_line (sorts by x).
+    if("ModelSize" %in% names(df_gg)){
+        df_gg <- df_gg[order(df_gg$Method, df_gg$ModelSize), ]
+    }
+
     if(subtitle){
         subtitle_txt <- paste("n = ", n_model, ", p = ", p, ", k = ", k, ",
             beta_high = ", beta_high, sep="")
     }
 
     plot <- ggplot(df_gg, aes(x=NSBStability, y=MSE, color=Method,
-        shape=Method)) + scale_shape_manual(values=1:n_methods) +
+        shape=Method)) + scale_shape_manual(values=methodShapeMap()) +
+        scale_color_manual(values=methodColorMap()) +
         xlab("NSB Stability")
 
-    if(line){
-        plot <- plot + suppressWarnings(geom_line())
-    } else{
-        plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1))
+    # Always draw points; add the connecting path when line=TRUE (line-plus-dots).
+    plot <- plot + suppressWarnings(geom_point(size=2.5, alpha=1))
+    if(line && ("ModelSize" %in% names(df_gg))){
+        plot <- plot + suppressWarnings(geom_path())
     }
 
     if(subtitle){
