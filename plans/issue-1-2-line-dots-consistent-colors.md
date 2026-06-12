@@ -75,19 +75,20 @@ so a missing/mistyped key fails loudly. (All figure methods come from `nameMap`'
 
 ⟲ **Scope note (#2 → also shape).** The issue asks for consistent *color*. We also fix *shape* because fixing color alone leaves shape drifting positionally → the shared color/shape legend desyncs across figures (a new inconsistency). Doing both is the same mechanism and fully delivers "consistent method identity." Easily reverted to color-only if the author prefers; flagged in the PR.
 
-### B. Drivers — explicit per-call `line=TRUE` checklist (⟲ corrected from generic rule)
+### B. Drivers — `line=TRUE` on the main-text Figure 3/4/7 panels only
 
-To make **all** main-text simulation panels line-plus-dots (supplement panels too, for one uniform style):
+⟲ Scoped to the literal issue ("Figures 3–5") = the three **main-text** simulation figures. Add `line=TRUE` to the main-text left/mid/right panels that lack it (10 calls):
 
-- **`sim_5_1.R`** (left/mid already `line=TRUE`): add `line=TRUE` to right panels **383, 451**; supplement calls **416, 423, 429, 484, 491, 497**.
-- **`sim_5_3.R`** (left/mid already `line=TRUE`): add `line=TRUE` to right panels **335, 400**; supplement calls **367, 374, 380, 431, 438, 444**.
-- **`sim_5_extra.R`** (⟲ **nothing has `line=TRUE`**): add `line=TRUE` to **left/mid/right main panels 321, 326, 329, 383, 388, 392**; supplement calls **360, 367, 373, 423, 430, 436**.
+- **`sim_5_1.R`** (Fig 3; left/mid already `line=TRUE`): right panels **383 (known), 451 (est)**.
+- **`sim_5_3.R`** (Fig 4; left/mid already `line=TRUE`): right panels **335 (known), 400 (est)**.
+- **`sim_5_extra.R`** (Fig 7; ⟲ **nothing has `line=TRUE`**): left/mid/right of both blocks — **321, 326, 329 (known), 383, 388, 392 (est)**.
 
-`scale_color_manual`/`scale_shape_manual` need **no** driver change. Legend extraction differs per driver (`get_legend(fig_*_right…)` in 5_1/5_3, `fig_*_left…` in 5_extra) but is unaffected — color/shape aesthetic *identity* is unchanged, only geoms/scale values. (Line numbers are pre-edit; implementer re-confirms by content.)
+`scale_color_manual`/`scale_shape_manual` need **no** driver change — they apply to every caller automatically, so #2's color/shape consistency lands on *all* figures at once. Legend extraction differs per driver (`get_legend(fig_*_right…)` in 5_1/5_3, `fig_*_left…` in 5_extra) but is unaffected. (Line numbers pre-edit; implementer re-confirms by content.)
 
 ## Out of scope (flag in PR)
 
-- ⟲ **`plant.R` / `fig_real_data.pdf` is color-affected**, not untouched: it calls the same three functions, so on next run its colors switch to the fixed palette (it passes `line=FALSE` → no line+dots change; all its methods are mapped → no greying). Likely an improvement; **author to confirm the recolor is acceptable** at merge.
+- ⟲ **Line-plus-dots is added to the main-text Figures 3/4/7.** The **intro Figure 2** MSE panel (`sim_5_1.R:341 fig_2_right`) *already* passed `line=TRUE` (lines-only), so with the function change it **also** becomes line-plus-dots automatically — a consistency win, disclosed not hidden. The **supplement twins** (`sim_{1,2,3}_*_supp`) and the **real-data figure** (`plant.R → fig_real_data`) keep their current **dots-only** styling — they aren't "Figures 3–5". All figures' **colors/shapes do** become consistent (the scale change is global, an unambiguous improvement). Making the remaining dots-only figures line-plus-dots too is a trivial follow-up (`line=TRUE` on those calls) — flagged for a one-word go-ahead.
+- ⟲ **`plant.R` / `fig_real_data.pdf` is color-affected**, not untouched: it calls the same three functions, so on next run its colors switch to the fixed palette (it uses the default `line=FALSE` → no line+dots change; all its methods are mapped → no greying). Likely an improvement; **author to confirm the recolor is acceptable** at merge.
 - **Regenerating the figure PDFs** in `figures/` — needs a full pipeline run (`n_sims=2000`, no cached results, `doMC`/`doParallel` etc.). This PR changes plotting *code*; figures regenerate next run (ideally batched with #6/#7/#9). Styling verified on synthetic data instead.
 - ⟲ **`simFunctions.R:531` `dataResults`→`createLossesPlot3(losses_mat, …)`**: a pre-broken, figure-driver-unused caller passing a matrix (no `ModelSize/Method`); it would already error on the existing `aes`. Our scale/assert additions don't worsen it — noted so a future reader doesn't blame this change.
 

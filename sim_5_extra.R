@@ -321,14 +321,14 @@ n_methods <- results$n_methods
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ],
     n_methods - 2 - length(est_cluster_meths), max_model_size=sig_blocks +
-    k_unblocked)
+    k_unblocked, line=TRUE)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ])
+    nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ], line=TRUE)
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr", "SS_CSS_avg_cssr", est_cluster_meths))), ],
-    n_methods - 2 - length(est_cluster_meths))
+    n_methods - 2 - length(est_cluster_meths), line=TRUE)
 
 # 2. Save the legend
 #+++++++++++++++++++++++
@@ -383,15 +383,15 @@ saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
 fig_4_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est",
         known_cluster_meths))), ], n_methods - 2 - length(known_cluster_meths),
-    max_model_size=sig_blocks + k_unblocked)
+    max_model_size=sig_blocks + k_unblocked, line=TRUE)
 
 fig_4_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est",
-        known_cluster_meths))), ])
+        known_cluster_meths))), ], line=TRUE)
 
 fig_4_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
     nameMap(c("SS_CSS_sparse_cssr_est", "SS_CSS_avg_cssr_est",
-        known_cluster_meths))), ], n_methods - 2 - length(known_cluster_meths))
+        known_cluster_meths))), ], n_methods - 2 - length(known_cluster_meths), line=TRUE)
 
 # 2. Save the legend
 #+++++++++++++++++++++++
