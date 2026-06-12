@@ -4815,7 +4815,10 @@ createNSBStabPlot2 <- function(df_gg, legend=TRUE, plot_errors=TRUE,
 
 
 createStabMSEPlot2 <- function(df_gg, n_methods, legend=TRUE, plot_errors=FALSE,
-    subtitle=FALSE, log_mse=FALSE, line=FALSE){
+    subtitle=FALSE, log_mse=FALSE, line=FALSE, cluster_count="none"){
+    # `cluster_count` was previously referenced as an undefined global in the
+    # plot_errors=TRUE branch below (issue #2); it is now a trailing parameter
+    # with the same default ("none" => also draw the x/stability error bars).
 
     require(ggplot2)
 

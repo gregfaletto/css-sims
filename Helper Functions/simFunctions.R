@@ -486,53 +486,6 @@ getGenStabSelected <- function(X_train, y_train, j_choices, R, q, B){
     return(list(selected_sets, j_choices))
 }
 
-dataResults <- function(X_selec, y_selec, X_train, y_train, X_test, mu_test, R,
-	p_max){
-	# Possible sizes of selected sets
-    j_choices <- 1:p_max
-	# Get selected sets
-	lasso_results <- getLassoSelected(X_selec, y_selec, j_choices)
-	lasso_selected <- lasso_results[[1]]
-	j_choices <- lasso_results[[2]]
-	stab_results <- getStabSelected(X_selec, y_selec, j_choices, q=p_max,
-		B=1000)
-	stab_selected <- stab_results[[1]]
-	j_choices <- stab_results[[2]]
-	gen_stab_results <- getGenStabSelected(X_selec, y_selec, j_choices, R=R,
-		q=p_max, B=1000)
-	gen_stab_selected <- gen_stab_results[[1]]
-	j_choices <- gen_stab_results[[2]]
-
-	# Fit OLS fits for lasso selected set, stability selection selected set,
-    # and generalized stability selected set
-    losses_mat <- matrix(NA, nrow=p_max, ncol=3)
-    if(!all(j_choices %in% 1:p_max)){
-        stop("!all(j_choices %in% 1:p_max)")
-    }
-    for(j in j_choices){
-        # losses[j, k] <- get_loss(x_train, y_train, x_test,
-        #     y_test, selected_sets[[k]][[j]])
-        losses_mat[j, 1] <- get_loss(X_train, y_train,
-            X_test, mu_test, lasso_selected[[j]])
-        losses_mat[j, 2] <- get_loss(X_train, y_train,
-            X_test, mu_test, stab_selected[[j]])
-        losses_mat[j, 3] <- get_loss(X_train, y_train,
-            X_test, mu_test, gen_stab_selected[[j]])
-    }
-
-    # losses_mat <- losses_mat[complete.cases(losses_mat), ]
-    colnames(losses_mat) <- c("Lasso", "Stability Selection",
-    	"Sparse CSS")
-
-    if(!all(j_choices %in% 1:nrow(losses_mat))){
-        stop("!all(j_choices %in% 1:nrow(losses_mat))")
-    }
-
-    plot_overall2 <- createLossesPlot3(losses_mat, j_choices)
-
-    print(plot_overall2)
-}
-
 dataResultsLoop <- function(X_selec, y_selec, X_train, y_train, X_test, mu_test,
     R, p_max, losses=NA, j_choices=NA){
     # Current number of columns in losses (needs to be 1 more than this later)
