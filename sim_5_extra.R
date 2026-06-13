@@ -359,19 +359,19 @@ saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_7_known.pd
 
 fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths),
-    max_model_size=sig_blocks + k_unblocked)
+    max_model_size=sig_blocks + k_unblocked, line=TRUE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
     filename="sim_3_known_mse_supp.pdf")
 
 fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(est_cluster_meths)), ])
+    nameMap(est_cluster_meths)), ], line=TRUE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
     filename="sim_3_known_stab_supp.pdf")
 
 fig_4_supp_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
-    nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths))
+    nameMap(est_cluster_meths)), ], n_methods - length(est_cluster_meths), line=TRUE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
     filename="sim_3_known_mse_stab_supp.pdf")
@@ -422,19 +422,19 @@ saveFigure2(subdir="figures", plot=fig_4, size="large", filename="fig_7_est.pdf"
 
 fig_4_supp_left <- createLossesPlot3(results_df[!(results_df$Method %in%
     nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths),
-    max_model_size=sig_blocks + k_unblocked)
+    max_model_size=sig_blocks + k_unblocked, line=TRUE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_left, size="xmlarge",
     filename="sim_3_est_mse_supp.pdf")
 
 fig_4_supp_mid <- createNSBStabPlot2(results_df[!(results_df$Method %in%
-    nameMap(known_cluster_meths)), ])
+    nameMap(known_cluster_meths)), ], line=TRUE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_mid, size="xmlarge",
     filename="sim_3_est_stab_supp.pdf")
 
 fig_4_supp_right <- createStabMSEPlot2(results_df[!(results_df$Method %in%
-    nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths))
+    nameMap(known_cluster_meths)), ], n_methods - length(known_cluster_meths), line=TRUE)
 
 saveFigure2(subdir="figures", plot=fig_4_supp_right, size="xmlarge",
     filename="sim_3_est_mse_stab_supp.pdf")
