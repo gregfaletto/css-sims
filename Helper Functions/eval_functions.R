@@ -249,6 +249,77 @@ cssr_mse <- new_metric("cssr_mse", "MSE", metric = function(model, out) {
      }
 )
 
+# Variance of the test-set squared errors (issue #9). Mirrors cssr_mse's
+# dispatch exactly (all four output shapes) but computes the variance rather
+# than the mean of the per-test-point squared errors. Returns raw
+# var_j(squared errors) per model size; the /n_test and the across-sims
+# aggregation are done in mseVarReport().
+cssr_mse_var <- new_metric("cssr_mse_var", "Variance of test-set squared errors",
+     metric = function(model, out) {
+          out_names <- names(out)
+
+          if("css_res" %in% out_names){
+               return(cssr_mse_metric_func(out, model$sig_blocks +
+                    model$k_unblocked, stat = "var"))
+          } else if("selected_clusts_list" %in% out_names){
+               return(clus_lasso_metric_func(out, model$sig_blocks +
+                    model$k_unblocked, stat = "var"))
+          } else if("selected_sets" %in% out_names){
+               return(lasso_metric_func(out$selected_sets, out,
+                    model$sig_blocks + model$k_unblocked, stat = "var"))
+          } else if("lasso_selected" %in% out_names){
+               return(lasso_metric_func(out$lasso_selected, out,
+                    model$sig_blocks + model$k_unblocked, stat = "var"))
+          }
+
+          # Shouldn't be possible to reach this point
+          stop("Error: no method for computing squared-error variance found")
+     }
+)
+
+#' Aggregate the #9 test-set-MSE variance from an evaluated data frame.
+#'
+#' Input `e_df` is `as.data.frame(evals(sim))` and must contain `cssr_mse` and
+#' `cssr_mse_var` (raw per-sim var of squared errors). Rows are one per
+#' Method x Draw x model size, with model size POSITIONAL (max_model_size rows
+#' per (Method, Draw) in order) -- the same convention genPlotDf relies on; there
+#' is no explicit ModelSize column, so we reconstruct it. Per (Method, ModelSize):
+#'   var_test_mse          = mean_s( var_j(squared errors) ) / n_test   [#9 headline]
+#'   mean_var_sq_err       = mean_s( var_j(squared errors) )            [pre-/n_test]
+#'   var_across_sims       = var_s( per-sim MSE )                       [comparison]
+#'   var_across_over_nsims = var_across_sims / (#non-NA sims)           [matches sd/sqrt(n)]
+#' NOTE: which of these to report (and the exact Jensen reading) is an open author
+#' decision -- `var_test_mse` is the literal "variance of squared errors / n_test,
+#' averaged across sims" deliverable.
+#' Assumes a single model (groups by Method x Draw, like genPlotDf); a multi-model
+#' evals frame would need a Model grouping key. Cells with no non-NA sims -> NA.
+mseVarReport <- function(e_df, n_test, max_model_size = NA){
+     stopifnot(all(c("Method", "Draw", "cssr_mse", "cssr_mse_var") %in%
+          colnames(e_df)))
+     # Reconstruct model size: within each (Method, Draw) the rows are model
+     # sizes 1..max in order.
+     e_df$ModelSize <- stats::ave(seq_len(nrow(e_df)), e_df$Method, e_df$Draw,
+          FUN = seq_along)
+     if(!is.na(max_model_size)){
+          stopifnot(all(e_df$ModelSize <= max_model_size))
+     }
+     groups <- split(e_df, list(e_df$Method, e_df$ModelSize), drop = TRUE)
+     out <- do.call(rbind, lapply(groups, function(g){
+          mean_var_sq <- if(all(is.na(g$cssr_mse_var))) NA_real_ else
+               mean(g$cssr_mse_var, na.rm = TRUE)
+          n_ok <- sum(!is.na(g$cssr_mse))
+          B <- if(n_ok >= 2) stats::var(g$cssr_mse, na.rm = TRUE) else NA_real_
+          data.frame(Method = g$Method[1], ModelSize = g$ModelSize[1],
+               mean_var_sq_err = mean_var_sq,
+               var_test_mse = mean_var_sq / n_test,
+               var_across_sims = B,
+               var_across_over_nsims = if(is.na(B)) NA_real_ else B / n_ok,
+               stringsAsFactors = FALSE)
+     }))
+     rownames(out) <- NULL
+     out[order(out$Method, out$ModelSize), ]
+}
+
 get_weights_mse <- function(model, all_weights){
      # Estimated weights for z cluster
      print("all_weights:")
@@ -412,7 +483,7 @@ weight_mse <- new_metric("weight_mse", "Weight MSE", metric = function(model,
      }
 )
 
-cssr_mse_metric_func <- function(out, max_model_size){
+cssr_mse_metric_func <- function(out, max_model_size, stat = "mean"){
      # method="ss" # Stability selection
      # "sparse" # sparse cluster stability selection
      # method="weighted_avg" # weighted cluster stability selection
@@ -437,8 +508,10 @@ cssr_mse_metric_func <- function(out, max_model_size){
                mu_hat_i <- cssr::getCssPreds(out$css_res, testX=out$testX,
                     weighting=out$method, min_num_clusts=i, max_num_clusts=i,
                     trainX=out$testX, trainY=out$testY)
-               # Calculate test set MSE
-               mses[i] <- mean((mu_hat_i - out$testMu)^2)
+               # Per-test-point squared errors: mean = MSE (default),
+               # var = variance of squared errors (issue #9)
+               sq_i <- (mu_hat_i - out$testMu)^2
+               mses[i] <- if(stat == "mean") mean(sq_i) else stats::var(sq_i)
           }
      }
      return(mses)
@@ -481,7 +554,7 @@ cssr_mse_metric_func_plant <- function(out, model, X_train, y_train, X_test,
 }
 
 
-lasso_metric_func <- function(selected, out, max_model_size){
+lasso_metric_func <- function(selected, out, max_model_size, stat = "mean"){
 
      n_sets <- max(lengths(selected))
      stopifnot(n_sets <= max_model_size)
@@ -494,7 +567,8 @@ lasso_metric_func <- function(selected, out, max_model_size){
                } else{
                     sel_set_i <- selected[[inds_i]]
                }
-               mses[i] <- get_mse(out$testX[, sel_set_i], out$testY, out$testMu)
+               mses[i] <- get_mse(out$testX[, sel_set_i], out$testY, out$testMu,
+                    stat = stat)
           }
      }
      return(mses)
@@ -521,12 +595,19 @@ lasso_metric_func_plant <- function(selected, out, model, X_train, y_train,
      return(mses)
 }
 
-get_mse <- function(x_train, y_train, mu_train){
+get_mse <- function(x_train, y_train, mu_train, stat = "mean"){
      df <- data.frame(y=y_train, x_train)
      df <- df[, colnames(df) != "(Intercept)"]
      lin_model <- stats::lm(y ~. + 0, df)
      preds <- stats::predict.lm(lin_model)
-     return(mean((preds - mu_train)^2))
+     sq <- (preds - mu_train)^2
+     # stat="mean" -> MSE (default, unchanged); stat="var" -> variance of the
+     # per-test-point squared errors (issue #9). New arg is TRAILING so the
+     # positional callers in this file are unaffected.
+     if(stat == "mean"){
+          return(mean(sq))
+     }
+     return(stats::var(sq))
 }
 
 get_mse_plant <- function(x_train, y_train, x_test, y_test){
@@ -542,7 +623,7 @@ get_mse_plant <- function(x_train, y_train, x_test, y_test){
      return(mean((preds - y_test)^2))
 }
 
-clus_lasso_metric_func <- function(out, max_model_size){
+clus_lasso_metric_func <- function(out, max_model_size, stat = "mean"){
      n_sets <- length(out$selected_clusts_list)
      stopifnot(n_sets <= max_model_size)
      mses <- rep(as.numeric(NA), max_model_size)
@@ -565,7 +646,7 @@ clus_lasso_metric_func <- function(out, max_model_size){
                }
                stopifnot(all(!is.na(X_train_i)))
 
-               mses[i] <- get_mse(X_train_i, out$testY, out$testMu)
+               mses[i] <- get_mse(X_train_i, out$testY, out$testMu, stat = stat)
           }
      }
      return(mses)
